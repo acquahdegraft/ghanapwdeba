@@ -1,10 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, UserPlus, ArrowLeft, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
+import { z } from "zod";
 
 const benefits = [
   "Access to business development resources",
@@ -14,18 +17,69 @@ const benefits = [
   "Funding opportunity notifications",
 ];
 
+const registerSchema = z.object({
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
+  email: z.string().email("Please enter a valid email address"),
+  phone: z.string().min(10, "Please enter a valid phone number"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+});
+
 export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [region, setRegion] = useState("");
+  const [businessType, setBusinessType] = useState("");
+  const [password, setPassword] = useState("");
   const navigate = useNavigate();
+  const { signUp, user } = useAuth();
+
+  useEffect(() => {
+    if (user) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    const validation = registerSchema.safeParse({ 
+      firstName, 
+      lastName, 
+      email, 
+      phone, 
+      password 
+    });
+    
+    if (!validation.success) {
+      toast.error(validation.error.errors[0].message);
+      return;
+    }
+
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      navigate("/dashboard");
-    }, 1500);
+    
+    const { error } = await signUp(email, password, {
+      full_name: `${firstName} ${lastName}`,
+      phone,
+    });
+    
+    setIsLoading(false);
+    
+    if (error) {
+      if (error.message.includes("already registered")) {
+        toast.error("This email is already registered. Please sign in instead.");
+      } else {
+        toast.error(error.message);
+      }
+      return;
+    }
+    
+    toast.success("Account created successfully! Welcome to GPWDEBA.");
+    navigate("/dashboard");
   };
 
   return (
@@ -100,11 +154,25 @@ export default function Register() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="firstName">First name</Label>
-                <Input id="firstName" placeholder="Kwame" required className="h-10" />
+                <Input 
+                  id="firstName" 
+                  placeholder="Kwame" 
+                  required 
+                  className="h-10"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="lastName">Last name</Label>
-                <Input id="lastName" placeholder="Asante" required className="h-10" />
+                <Input 
+                  id="lastName" 
+                  placeholder="Asante" 
+                  required 
+                  className="h-10"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                />
               </div>
             </div>
 
@@ -116,6 +184,8 @@ export default function Register() {
                 placeholder="you@example.com"
                 required
                 className="h-10"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
               />
             </div>
 
@@ -127,12 +197,14 @@ export default function Register() {
                 placeholder="+233 XX XXX XXXX"
                 required
                 className="h-10"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
               />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="region">Region</Label>
-              <Select>
+              <Select value={region} onValueChange={setRegion}>
                 <SelectTrigger className="h-10">
                   <SelectValue placeholder="Select your region" />
                 </SelectTrigger>
@@ -163,6 +235,8 @@ export default function Register() {
                 id="businessType"
                 placeholder="e.g., Retail, Agriculture, Services"
                 className="h-10"
+                value={businessType}
+                onChange={(e) => setBusinessType(e.target.value)}
               />
             </div>
 
@@ -175,6 +249,8 @@ export default function Register() {
                   placeholder="Create a password"
                   required
                   className="h-10 pr-10"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                 />
                 <button
                   type="button"

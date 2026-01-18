@@ -14,7 +14,153 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      membership_types: {
+        Row: {
+          annual_dues: number
+          benefits: string[] | null
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          annual_dues?: number
+          benefits?: string[] | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          annual_dues?: number
+          benefits?: string[] | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      payments: {
+        Row: {
+          amount: number
+          created_at: string
+          due_date: string | null
+          id: string
+          notes: string | null
+          payment_date: string | null
+          payment_method: string | null
+          payment_type: string
+          status: Database["public"]["Enums"]["payment_status"]
+          transaction_reference: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          notes?: string | null
+          payment_date?: string | null
+          payment_method?: string | null
+          payment_type?: string
+          status?: Database["public"]["Enums"]["payment_status"]
+          transaction_reference?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          notes?: string | null
+          payment_date?: string | null
+          payment_method?: string | null
+          payment_type?: string
+          status?: Database["public"]["Enums"]["payment_status"]
+          transaction_reference?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          business_name: string | null
+          business_type: string | null
+          city: string | null
+          created_at: string
+          disability_type: Database["public"]["Enums"]["disability_type"] | null
+          email: string
+          full_name: string
+          id: string
+          membership_expiry_date: string | null
+          membership_start_date: string | null
+          membership_status: Database["public"]["Enums"]["membership_status"]
+          membership_type_id: string | null
+          phone: string | null
+          region: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          business_name?: string | null
+          business_type?: string | null
+          city?: string | null
+          created_at?: string
+          disability_type?:
+            | Database["public"]["Enums"]["disability_type"]
+            | null
+          email: string
+          full_name: string
+          id?: string
+          membership_expiry_date?: string | null
+          membership_start_date?: string | null
+          membership_status?: Database["public"]["Enums"]["membership_status"]
+          membership_type_id?: string | null
+          phone?: string | null
+          region?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          business_name?: string | null
+          business_type?: string | null
+          city?: string | null
+          created_at?: string
+          disability_type?:
+            | Database["public"]["Enums"]["disability_type"]
+            | null
+          email?: string
+          full_name?: string
+          id?: string
+          membership_expiry_date?: string | null
+          membership_start_date?: string | null
+          membership_status?: Database["public"]["Enums"]["membership_status"]
+          membership_type_id?: string | null
+          phone?: string | null
+          region?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_membership_type_id_fkey"
+            columns: ["membership_type_id"]
+            isOneToOne: false
+            referencedRelation: "membership_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +169,16 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      disability_type:
+        | "physical"
+        | "visual"
+        | "hearing"
+        | "intellectual"
+        | "psychosocial"
+        | "multiple"
+        | "other"
+      membership_status: "active" | "pending" | "suspended" | "expired"
+      payment_status: "pending" | "completed" | "failed" | "refunded"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +305,18 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      disability_type: [
+        "physical",
+        "visual",
+        "hearing",
+        "intellectual",
+        "psychosocial",
+        "multiple",
+        "other",
+      ],
+      membership_status: ["active", "pending", "suspended", "expired"],
+      payment_status: ["pending", "completed", "failed", "refunded"],
+    },
   },
 } as const
