@@ -3,8 +3,41 @@ import { PaymentCard } from "@/components/dashboard/PaymentCard";
 import { PaymentHistoryTable } from "@/components/dashboard/PaymentHistoryTable";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { CreditCard, TrendingUp, Calendar, Receipt } from "lucide-react";
+import { useProfile } from "@/hooks/useProfile";
+import { usePayments } from "@/hooks/usePayments";
+import { format, parseISO, differenceInDays } from "date-fns";
 
 export default function Payments() {
+  const { data: profile } = useProfile();
+  const { data: payments } = usePayments();
+
+  const totalPaidThisYear = payments?.reduce((sum, p) => {
+    if (p.status === "completed" && p.payment_date) {
+      const paymentYear = new Date(p.payment_date).getFullYear();
+      if (paymentYear === new Date().getFullYear()) {
+        return sum + Number(p.amount);
+      }
+    }
+    return sum;
+  }, 0) || 0;
+
+  const totalPaidAllTime = payments?.reduce((sum, p) => 
+    p.status === "completed" ? sum + Number(p.amount) : sum, 0
+  ) || 0;
+
+  const membershipExpiry = profile?.membership_expiry_date 
+    ? parseISO(profile.membership_expiry_date)
+    : null;
+  const daysRemaining = membershipExpiry 
+    ? Math.max(0, differenceInDays(membershipExpiry, new Date()))
+    : 0;
+
+  const expiryFormatted = membershipExpiry
+    ? format(membershipExpiry, "MMM d, yyyy")
+    : "Not set";
+
+  const lastPayment = payments?.[0];
+
   return (
     <DashboardLayout
       title="Payments & Dues"
@@ -13,27 +46,27 @@ export default function Payments() {
       {/* Stats Overview */}
       <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          title="Total Paid (2025)"
-          value="GHS 200.00"
-          description="Annual membership dues"
+          title={`Total Paid (${new Date().getFullYear()})`}
+          value={`GHS ${totalPaidThisYear.toFixed(2)}`}
+          description="This year"
           icon={<CreditCard className="h-5 w-5" />}
           variant="success"
         />
         <StatCard
           title="Total Paid (All Time)"
-          value="GHS 640.00"
-          description="Since 2020"
+          value={`GHS ${totalPaidAllTime.toFixed(2)}`}
+          description="Since joining"
           icon={<TrendingUp className="h-5 w-5" />}
         />
         <StatCard
           title="Next Due Date"
-          value="Dec 31, 2025"
-          description="348 days remaining"
+          value={expiryFormatted}
+          description={membershipExpiry ? `${daysRemaining} days remaining` : "Pending activation"}
           icon={<Calendar className="h-5 w-5" />}
         />
         <StatCard
           title="Transactions"
-          value="8"
+          value={payments?.length || 0}
           description="Total payments made"
           icon={<Receipt className="h-5 w-5" />}
           variant="accent"
@@ -45,11 +78,11 @@ export default function Payments() {
         {/* Current Year Payment */}
         <PaymentCard
           membershipType="Standard Member"
-          amount="200.00"
+          amount="100.00"
           currency="GHS"
-          dueDate="Dec 31, 2025"
-          status="paid"
-          paidDate="Jan 15, 2025"
+          dueDate={expiryFormatted}
+          status={lastPayment?.status === "completed" ? "paid" : "pending"}
+          paidDate={lastPayment?.payment_date ? format(parseISO(lastPayment.payment_date), "MMM d, yyyy") : undefined}
         />
 
         {/* Upcoming Payment */}
@@ -62,10 +95,10 @@ export default function Payments() {
               </div>
               <div className="flex-1">
                 <p className="text-sm font-medium">MTN Mobile Money</p>
-                <p className="text-xs text-muted-foreground">**** 4521</p>
+                <p className="text-xs text-muted-foreground">Recommended</p>
               </div>
               <span className="rounded-full bg-success/10 px-2 py-0.5 text-xs font-medium text-success">
-                Primary
+                Available
               </span>
             </div>
             <div className="flex items-center gap-3 rounded-lg border p-3">
@@ -74,7 +107,7 @@ export default function Payments() {
               </div>
               <div className="flex-1">
                 <p className="text-sm font-medium">Vodafone Cash</p>
-                <p className="text-xs text-muted-foreground">**** 7832</p>
+                <p className="text-xs text-muted-foreground">Coming soon</p>
               </div>
             </div>
             <button className="w-full rounded-lg border border-dashed border-muted-foreground/30 py-3 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary">
@@ -92,21 +125,21 @@ export default function Payments() {
                 <p className="text-sm font-medium">Standard Member</p>
                 <p className="text-xs text-muted-foreground">Annual fee</p>
               </div>
-              <p className="text-lg font-bold">GHS 200</p>
+              <p className="text-lg font-bold">GHS 100</p>
             </div>
             <div className="flex items-center justify-between rounded-lg bg-muted/50 p-3">
               <div>
                 <p className="text-sm font-medium">Premium Member</p>
                 <p className="text-xs text-muted-foreground">Annual fee</p>
               </div>
-              <p className="text-lg font-bold">GHS 500</p>
+              <p className="text-lg font-bold">GHS 250</p>
             </div>
             <div className="flex items-center justify-between rounded-lg bg-muted/50 p-3">
               <div>
                 <p className="text-sm font-medium">Corporate Member</p>
                 <p className="text-xs text-muted-foreground">Annual fee</p>
               </div>
-              <p className="text-lg font-bold">GHS 1,000</p>
+              <p className="text-lg font-bold">GHS 500</p>
             </div>
           </div>
         </div>

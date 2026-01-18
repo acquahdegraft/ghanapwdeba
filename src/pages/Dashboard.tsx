@@ -5,40 +5,69 @@ import { MembershipStatusCard } from "@/components/dashboard/MembershipStatusCar
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { UpcomingEvents } from "@/components/dashboard/UpcomingEvents";
 import { CreditCard, Calendar, FileText, Users } from "lucide-react";
+import { useProfile } from "@/hooks/useProfile";
+import { usePayments } from "@/hooks/usePayments";
+import { format, differenceInDays, parseISO } from "date-fns";
 
 export default function Dashboard() {
+  const { data: profile, isLoading: profileLoading } = useProfile();
+  const { data: payments, isLoading: paymentsLoading } = usePayments();
+
+  const firstName = profile?.full_name?.split(" ")[0] || "Member";
+  
+  // Calculate membership days remaining
+  const membershipExpiry = profile?.membership_expiry_date 
+    ? parseISO(profile.membership_expiry_date)
+    : null;
+  const daysRemaining = membershipExpiry 
+    ? Math.max(0, differenceInDays(membershipExpiry, new Date()))
+    : 0;
+  
+  // Get last payment
+  const lastPayment = payments?.[0];
+  const totalPaid = payments?.reduce((sum, p) => 
+    p.status === "completed" ? sum + Number(p.amount) : sum, 0
+  ) || 0;
+
+  const memberSince = profile?.created_at 
+    ? format(parseISO(profile.created_at), "MMMM yyyy")
+    : "Recently";
+
+  const expiryFormatted = membershipExpiry
+    ? format(membershipExpiry, "MMMM d, yyyy")
+    : "Not set";
+
   return (
     <DashboardLayout
-      title="Welcome back, Kwame!"
+      title={`Welcome back, ${firstName}!`}
       description="Here's an overview of your membership and recent activity"
     >
       {/* Stats Row */}
       <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Membership Status"
-          value="Active"
-          description="Valid until Dec 31, 2025"
+          value={profile?.membership_status === "active" ? "Active" : "Pending"}
+          description={membershipExpiry ? `Valid until ${format(membershipExpiry, "MMM d, yyyy")}` : "Awaiting activation"}
           icon={<Users className="h-5 w-5" />}
-          variant="success"
+          variant={profile?.membership_status === "active" ? "success" : "warning"}
         />
         <StatCard
           title="Next Payment Due"
-          value="GHS 200"
-          description="Due in 348 days"
+          value="GHS 100"
+          description={membershipExpiry ? `Due in ${daysRemaining} days` : "After activation"}
           icon={<CreditCard className="h-5 w-5" />}
           variant="default"
         />
         <StatCard
-          title="Events Attended"
-          value="12"
-          description="This year"
+          title="Total Payments"
+          value={payments?.length || 0}
+          description="Transactions made"
           icon={<Calendar className="h-5 w-5" />}
-          trend={{ value: "3 more than last year", positive: true }}
         />
         <StatCard
-          title="Resources Downloaded"
-          value="24"
-          description="Total downloads"
+          title="Amount Paid"
+          value={`GHS ${totalPaid.toFixed(2)}`}
+          description="All time"
           icon={<FileText className="h-5 w-5" />}
           variant="accent"
         />
@@ -49,19 +78,19 @@ export default function Dashboard() {
         {/* Left Column - Payment & Status */}
         <div className="space-y-6">
           <PaymentCard
-            membershipType="Standard Member"
-            amount="200.00"
+            membershipType={profile?.membership_status === "active" ? "Standard Member" : "Pending Member"}
+            amount="100.00"
             currency="GHS"
-            dueDate="Dec 31, 2025"
-            status="paid"
-            paidDate="Jan 15, 2025"
+            dueDate={expiryFormatted}
+            status={lastPayment?.status === "completed" ? "paid" : "pending"}
+            paidDate={lastPayment?.payment_date ? format(parseISO(lastPayment.payment_date), "MMM d, yyyy") : undefined}
           />
           <MembershipStatusCard
-            memberSince="March 2020"
-            expiryDate="December 31, 2025"
-            membershipLevel="Standard Member"
-            memberNumber="GPWDEBA-2020-0458"
-            daysRemaining={348}
+            memberSince={memberSince}
+            expiryDate={expiryFormatted}
+            membershipLevel={profile?.membership_status === "active" ? "Standard Member" : "Pending Activation"}
+            memberNumber={`GPWDEBA-${profile?.id?.slice(0, 8).toUpperCase() || "XXXXXXXX"}`}
+            daysRemaining={daysRemaining}
             totalDays={365}
           />
         </div>

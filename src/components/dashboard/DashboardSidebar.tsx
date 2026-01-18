@@ -11,6 +11,8 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
+import { useProfile } from "@/hooks/useProfile";
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -27,6 +29,20 @@ const secondaryNav = [
 
 export function DashboardSidebar() {
   const location = useLocation();
+  const { signOut } = useAuth();
+  const { data: profile } = useProfile();
+
+  const displayName = profile?.full_name || "Member";
+  const initials = displayName
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+
+  const handleSignOut = async () => {
+    await signOut();
+  };
 
   return (
     <aside className="flex h-screen w-64 flex-col bg-sidebar text-sidebar-foreground">
@@ -106,14 +122,19 @@ export function DashboardSidebar() {
       <div className="border-t border-sidebar-border p-4">
         <div className="flex items-center gap-3 rounded-lg bg-sidebar-accent/30 p-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-sidebar-primary text-sidebar-primary-foreground">
-            <span className="text-sm font-semibold">KA</span>
+            <span className="text-sm font-semibold">{initials}</span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="truncate text-sm font-medium">Kwame Asante</p>
-            <p className="truncate text-xs text-sidebar-muted">Active Member</p>
+            <p className="truncate text-sm font-medium">{displayName}</p>
+            <p className="truncate text-xs text-sidebar-muted">
+              {profile?.membership_status === "active" ? "Active Member" : "Pending Member"}
+            </p>
           </div>
         </div>
-        <button className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-sidebar-border py-2 text-sm text-sidebar-muted transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground">
+        <button 
+          onClick={handleSignOut}
+          className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-sidebar-border py-2 text-sm text-sidebar-muted transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+        >
           <LogOut className="h-4 w-4" />
           Sign Out
         </button>

@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 
 interface StatCardProps {
   title: string;
-  value: string;
+  value: string | number;
   description?: string;
   icon: ReactNode;
   trend?: {
