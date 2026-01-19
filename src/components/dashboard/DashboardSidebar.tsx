@@ -9,10 +9,12 @@ import {
   LogOut,
   HelpCircle,
   ChevronRight,
+  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
+import { useAdminRole } from "@/hooks/useAdminRole";
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -20,6 +22,10 @@ const navigation = [
   { name: "My Profile", href: "/dashboard/profile", icon: User },
   { name: "Events", href: "/dashboard/events", icon: Calendar },
   { name: "Resources", href: "/dashboard/resources", icon: FileText },
+];
+
+const adminNav = [
+  { name: "Admin Dashboard", href: "/dashboard/admin", icon: Shield },
 ];
 
 const secondaryNav = [
@@ -31,6 +37,7 @@ export function DashboardSidebar() {
   const location = useLocation();
   const { signOut } = useAuth();
   const { data: profile } = useProfile();
+  const { data: isAdmin } = useAdminRole();
 
   const displayName = profile?.full_name || "Member";
   const initials = displayName
@@ -84,10 +91,45 @@ export function DashboardSidebar() {
               <span className="flex-1">{item.name}</span>
               {isActive && (
                 <ChevronRight className="h-4 w-4 text-sidebar-primary" />
-              )}
+            )}
             </Link>
           );
         })}
+
+        {/* Admin Navigation */}
+        {isAdmin && (
+          <>
+            <div className="mb-2 mt-8 px-3 text-xs font-medium uppercase tracking-wider text-sidebar-muted">
+              Admin
+            </div>
+            {adminNav.map((item) => {
+              const isActive = location.pathname === item.href;
+              return (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  className={cn(
+                    "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                    isActive
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                      : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                  )}
+                >
+                  <item.icon
+                    className={cn(
+                      "h-5 w-5 transition-colors",
+                      isActive ? "text-sidebar-primary" : "text-sidebar-muted group-hover:text-sidebar-foreground"
+                    )}
+                  />
+                  <span className="flex-1">{item.name}</span>
+                  {isActive && (
+                    <ChevronRight className="h-4 w-4 text-sidebar-primary" />
+                  )}
+                </Link>
+              );
+            })}
+          </>
+        )}
 
         {/* Secondary Navigation */}
         <div className="mb-2 mt-8 px-3 text-xs font-medium uppercase tracking-wider text-sidebar-muted">
