@@ -6,6 +6,16 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Validate reference format (alphanumeric, reasonable length)
+function validateReference(reference: unknown): reference is string {
+  return (
+    typeof reference === "string" &&
+    reference.length >= 10 &&
+    reference.length <= 100 &&
+    /^[a-zA-Z0-9_-]+$/.test(reference)
+  );
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -26,9 +36,10 @@ serve(async (req) => {
     const paystackSecretKey = Deno.env.get("PAYSTACK_SECRET_KEY");
 
     if (!paystackSecretKey) {
+      console.error("PAYSTACK_SECRET_KEY not configured");
       return new Response(
-        JSON.stringify({ error: "Payment service not configured" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Payment service temporarily unavailable" }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -49,11 +60,22 @@ serve(async (req) => {
       );
     }
 
-    const { reference } = await req.json();
-
-    if (!reference) {
+    // Parse and validate request body
+    let requestBody: unknown;
+    try {
+      requestBody = await req.json();
+    } catch {
       return new Response(
-        JSON.stringify({ error: "Reference is required" }),
+        JSON.stringify({ error: "Invalid request" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const reference = (requestBody as Record<string, unknown>)?.reference;
+
+    if (!validateReference(reference)) {
+      return new Response(
+        JSON.stringify({ error: "Invalid payment reference format" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -71,12 +93,13 @@ serve(async (req) => {
     );
 
     const verifyData = await verifyResponse.json();
-    console.log("Verification response:", JSON.stringify(verifyData));
+    console.log("Verification status:", verifyData.status);
 
     if (!verifyData.status) {
+      console.error("Paystack verification failed:", JSON.stringify(verifyData));
       return new Response(
         JSON.stringify({ 
-          error: verifyData.message || "Verification failed",
+          error: "Unable to verify payment. Please try again.",
           verified: false 
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -93,7 +116,7 @@ serve(async (req) => {
       .update({
         status: paymentStatus,
         payment_date: paymentStatus === "completed" ? new Date().toISOString() : null,
-        notes: `Payment ${paymentStatus}. Paystack ref: ${reference}`,
+        notes: `Payment ${paymentStatus}. Ref: ${reference}`,
       })
       .eq("transaction_reference", reference);
 
@@ -121,7 +144,7 @@ serve(async (req) => {
       if (profileError) {
         console.error("Error updating profile:", profileError);
       } else {
-        console.log(`Membership activated for user ${userId} until ${newExpiryDate}`);
+        console.log(`Membership activated for user until ${newExpiryDate.toISOString().split("T")[0]}`);
       }
     }
 
@@ -137,9 +160,8 @@ serve(async (req) => {
 
   } catch (error: unknown) {
     console.error("Verification error:", error);
-    const message = error instanceof Error ? error.message : "Verification failed";
     return new Response(
-      JSON.stringify({ error: message }),
+      JSON.stringify({ error: "Verification failed. Please try again or contact support." }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

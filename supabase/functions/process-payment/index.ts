@@ -6,12 +6,60 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface PaymentRequest {
-  amount: number;
-  email: string;
-  phone: string;
-  provider: "mtn" | "vodafone" | "airteltigo";
-  payment_type: string;
+// Input validation helpers
+const VALID_PROVIDERS = ["mtn", "vodafone", "airteltigo"] as const;
+type Provider = typeof VALID_PROVIDERS[number];
+
+const GHANA_PHONE_REGEX = /^(\+233|0)?[0-9]{9}$/;
+
+function validatePaymentRequest(data: unknown): { 
+  valid: true; 
+  data: { amount: number; email: string; phone: string; provider: Provider; payment_type: string } 
+} | { 
+  valid: false; 
+  error: string 
+} {
+  if (!data || typeof data !== 'object') {
+    return { valid: false, error: "Invalid request body" };
+  }
+
+  const { amount, email, phone, provider, payment_type } = data as Record<string, unknown>;
+
+  // Validate amount
+  if (typeof amount !== 'number' || amount <= 0 || amount > 100000) {
+    return { valid: false, error: "Amount must be between 1 and 100,000 GHS" };
+  }
+
+  // Validate email
+  if (typeof email !== 'string' || !email.includes('@') || email.length > 255) {
+    return { valid: false, error: "Invalid email address" };
+  }
+
+  // Validate phone
+  if (typeof phone !== 'string' || !GHANA_PHONE_REGEX.test(phone.replace(/\s/g, ""))) {
+    return { valid: false, error: "Invalid Ghana phone number format" };
+  }
+
+  // Validate provider
+  if (!VALID_PROVIDERS.includes(provider as Provider)) {
+    return { valid: false, error: "Invalid provider. Must be mtn, vodafone, or airteltigo" };
+  }
+
+  // Validate payment_type
+  const validPaymentType = typeof payment_type === 'string' && payment_type.length > 0 && payment_type.length <= 100
+    ? payment_type
+    : "membership_dues";
+
+  return {
+    valid: true,
+    data: {
+      amount: amount as number,
+      email: email as string,
+      phone: phone as string,
+      provider: provider as Provider,
+      payment_type: validPaymentType,
+    },
+  };
 }
 
 serve(async (req) => {
@@ -37,8 +85,8 @@ serve(async (req) => {
     if (!paystackSecretKey) {
       console.error("PAYSTACK_SECRET_KEY not configured");
       return new Response(
-        JSON.stringify({ error: "Payment service not configured" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Payment service temporarily unavailable" }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -58,22 +106,27 @@ serve(async (req) => {
     }
 
     const userId = claimsData.user.id;
-    const { amount, email, phone, provider, payment_type }: PaymentRequest = await req.json();
-
-    // Validate input
-    if (!amount || !email || !phone || !provider) {
+    
+    // Parse and validate input
+    let requestBody: unknown;
+    try {
+      requestBody = await req.json();
+    } catch {
       return new Response(
-        JSON.stringify({ error: "Missing required fields: amount, email, phone, provider" }),
+        JSON.stringify({ error: "Invalid JSON request body" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Map provider to Paystack channel
-    const providerChannelMap: Record<string, string> = {
-      mtn: "mobile_money",
-      vodafone: "mobile_money", 
-      airteltigo: "mobile_money",
-    };
+    const validation = validatePaymentRequest(requestBody);
+    if (!validation.valid) {
+      return new Response(
+        JSON.stringify({ error: validation.error }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { amount, email, phone, provider, payment_type } = validation.data;
 
     // Format phone for Ghana (remove leading 0, add country code)
     let formattedPhone = phone.replace(/\s/g, "").replace(/^\+233/, "").replace(/^0/, "");
@@ -98,21 +151,19 @@ serve(async (req) => {
         },
         metadata: {
           user_id: userId,
-          payment_type: payment_type || "membership_dues",
+          payment_type,
           provider,
         },
       }),
     });
 
     const paystackData = await paystackResponse.json();
-    console.log("Paystack response:", JSON.stringify(paystackData));
+    console.log("Paystack response status:", paystackData.status);
 
     if (!paystackData.status) {
+      console.error("Paystack error:", JSON.stringify(paystackData));
       return new Response(
-        JSON.stringify({ 
-          error: paystackData.message || "Payment initialization failed",
-          details: paystackData 
-        }),
+        JSON.stringify({ error: "Unable to process payment. Please try again or contact support." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -123,7 +174,7 @@ serve(async (req) => {
       .insert({
         user_id: userId,
         amount,
-        payment_type: payment_type || "membership_dues",
+        payment_type,
         payment_method: `${provider}_mobile_money`,
         transaction_reference: paystackData.data.reference,
         status: "pending",
@@ -135,7 +186,7 @@ serve(async (req) => {
     if (insertError) {
       console.error("Error creating payment record:", insertError);
       return new Response(
-        JSON.stringify({ error: "Failed to create payment record" }),
+        JSON.stringify({ error: "Failed to process payment. Please try again." }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -153,9 +204,8 @@ serve(async (req) => {
 
   } catch (error: unknown) {
     console.error("Payment processing error:", error);
-    const message = error instanceof Error ? error.message : "An error occurred processing payment";
     return new Response(
-      JSON.stringify({ error: message }),
+      JSON.stringify({ error: "An error occurred. Please try again or contact support." }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
