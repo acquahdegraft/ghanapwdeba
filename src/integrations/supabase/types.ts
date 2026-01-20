@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      announcements: {
+        Row: {
+          content: string
+          created_at: string
+          created_by: string
+          expire_date: string | null
+          id: string
+          is_published: boolean
+          priority: string
+          publish_date: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          created_by: string
+          expire_date?: string | null
+          id?: string
+          is_published?: boolean
+          priority?: string
+          publish_date?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          created_by?: string
+          expire_date?: string | null
+          id?: string
+          is_published?: boolean
+          priority?: string
+          publish_date?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       membership_types: {
         Row: {
           annual_dues: number
@@ -21,6 +60,7 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          is_active: boolean
           name: string
           updated_at: string
         }
@@ -30,6 +70,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          is_active?: boolean
           name: string
           updated_at?: string
         }
@@ -39,6 +80,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          is_active?: boolean
           name?: string
           updated_at?: string
         }
