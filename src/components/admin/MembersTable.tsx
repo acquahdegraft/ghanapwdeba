@@ -36,12 +36,22 @@ export function MembersTable({ members, isLoading }: MembersTableProps) {
     member.business_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleStatusUpdate = (profileId: string, status: "pending" | "active" | "expired" | "suspended") => {
+  const handleStatusUpdate = (
+    member: MemberProfile,
+    status: "pending" | "active" | "expired" | "suspended"
+  ) => {
     const expiryDate = status === "active" 
       ? addYears(new Date(), 1).toISOString().split("T")[0]
       : undefined;
     
-    updateStatus.mutate({ profileId, status, expiryDate });
+    updateStatus.mutate({ 
+      profileId: member.id, 
+      status, 
+      expiryDate,
+      memberEmail: member.email,
+      memberName: member.full_name,
+      oldStatus: member.membership_status,
+    });
   };
 
   const getStatusBadge = (status: string) => {
@@ -140,28 +150,28 @@ export function MembersTable({ members, isLoading }: MembersTableProps) {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem
-                              onClick={() => handleStatusUpdate(member.id, "active")}
+                              onClick={() => handleStatusUpdate(member, "active")}
                               disabled={member.membership_status === "active"}
                             >
                               <UserCheck className="mr-2 h-4 w-4 text-green-600" />
                               Activate Membership
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              onClick={() => handleStatusUpdate(member.id, "pending")}
+                              onClick={() => handleStatusUpdate(member, "pending")}
                               disabled={member.membership_status === "pending"}
                             >
                               <Clock className="mr-2 h-4 w-4 text-yellow-600" />
                               Set as Pending
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              onClick={() => handleStatusUpdate(member.id, "expired")}
+                              onClick={() => handleStatusUpdate(member, "expired")}
                               disabled={member.membership_status === "expired"}
                             >
                               <UserX className="mr-2 h-4 w-4 text-red-600" />
                               Mark as Expired
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              onClick={() => handleStatusUpdate(member.id, "suspended")}
+                              onClick={() => handleStatusUpdate(member, "suspended")}
                               disabled={member.membership_status === "suspended"}
                             >
                               <Ban className="mr-2 h-4 w-4 text-gray-600" />
