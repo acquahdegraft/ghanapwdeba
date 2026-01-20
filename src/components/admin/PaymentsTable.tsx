@@ -36,8 +36,18 @@ export function PaymentsTable({ payments, isLoading }: PaymentsTableProps) {
     payment.transaction_reference?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleStatusUpdate = (paymentId: string, status: "pending" | "completed" | "failed" | "refunded") => {
-    updateStatus.mutate({ paymentId, status });
+  const handleStatusUpdate = (
+    payment: AdminPayment,
+    status: "pending" | "completed" | "failed" | "refunded"
+  ) => {
+    updateStatus.mutate({ 
+      paymentId: payment.id, 
+      status,
+      memberEmail: payment.profiles?.email,
+      memberName: payment.profiles?.full_name,
+      oldStatus: payment.status,
+      amount: payment.amount,
+    });
   };
 
   const getStatusBadge = (status: string) => {
@@ -144,28 +154,28 @@ export function PaymentsTable({ payments, isLoading }: PaymentsTableProps) {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem
-                              onClick={() => handleStatusUpdate(payment.id, "completed")}
+                              onClick={() => handleStatusUpdate(payment, "completed")}
                               disabled={payment.status === "completed"}
                             >
                               <CheckCircle className="mr-2 h-4 w-4 text-green-600" />
                               Mark as Completed
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              onClick={() => handleStatusUpdate(payment.id, "pending")}
+                              onClick={() => handleStatusUpdate(payment, "pending")}
                               disabled={payment.status === "pending"}
                             >
                               <Clock className="mr-2 h-4 w-4 text-yellow-600" />
                               Set as Pending
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              onClick={() => handleStatusUpdate(payment.id, "failed")}
+                              onClick={() => handleStatusUpdate(payment, "failed")}
                               disabled={payment.status === "failed"}
                             >
                               <XCircle className="mr-2 h-4 w-4 text-red-600" />
                               Mark as Failed
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              onClick={() => handleStatusUpdate(payment.id, "refunded")}
+                              onClick={() => handleStatusUpdate(payment, "refunded")}
                               disabled={payment.status === "refunded"}
                             >
                               <RotateCcw className="mr-2 h-4 w-4 text-purple-600" />

@@ -4,6 +4,7 @@ import { PaymentCard } from "@/components/dashboard/PaymentCard";
 import { MembershipStatusCard } from "@/components/dashboard/MembershipStatusCard";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { UpcomingEvents } from "@/components/dashboard/UpcomingEvents";
+import { AnnouncementsBanner } from "@/components/dashboard/AnnouncementsBanner";
 import { CreditCard, Calendar, FileText, Users } from "lucide-react";
 import { useProfile } from "@/hooks/useProfile";
 import { usePayments } from "@/hooks/usePayments";
@@ -42,6 +43,9 @@ export default function Dashboard() {
       title={`Welcome back, ${firstName}!`}
       description="Here's an overview of your membership and recent activity"
     >
+      {/* Announcements */}
+      <AnnouncementsBanner />
+
       {/* Stats Row */}
       <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard

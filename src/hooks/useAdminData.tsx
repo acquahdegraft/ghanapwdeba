@@ -38,6 +38,36 @@ export interface AdminPayment {
   };
 }
 
+async function sendNotificationEmail(
+  to: string,
+  memberName: string,
+  notificationType: "membership_status" | "payment_status",
+  oldStatus: string,
+  newStatus: string,
+  additionalInfo?: string
+) {
+  try {
+    const response = await supabase.functions.invoke("send-notification", {
+      body: {
+        to,
+        memberName,
+        notificationType,
+        oldStatus,
+        newStatus,
+        additionalInfo,
+      },
+    });
+
+    if (response.error) {
+      console.error("Failed to send notification email:", response.error);
+    } else {
+      console.log("Notification email sent successfully");
+    }
+  } catch (error) {
+    console.error("Error sending notification email:", error);
+  }
+}
+
 export function useAllMembers() {
   const { data: isAdmin } = useAdminRole();
 
@@ -100,11 +130,17 @@ export function useUpdateMembershipStatus() {
     mutationFn: async ({ 
       profileId, 
       status,
-      expiryDate 
+      expiryDate,
+      memberEmail,
+      memberName,
+      oldStatus,
     }: { 
       profileId: string; 
       status: "pending" | "active" | "expired" | "suspended";
       expiryDate?: string;
+      memberEmail?: string;
+      memberName?: string;
+      oldStatus?: string;
     }) => {
       const updateData: Record<string, unknown> = { 
         membership_status: status 
@@ -121,6 +157,18 @@ export function useUpdateMembershipStatus() {
         .eq("id", profileId);
 
       if (error) throw error;
+
+      // Send email notification if we have member details
+      if (memberEmail && memberName && oldStatus) {
+        await sendNotificationEmail(
+          memberEmail,
+          memberName,
+          "membership_status",
+          oldStatus,
+          status,
+          expiryDate ? `Membership valid until: ${expiryDate}` : undefined
+        );
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "members"] });
@@ -138,10 +186,18 @@ export function useUpdatePaymentStatus() {
   return useMutation({
     mutationFn: async ({ 
       paymentId, 
-      status 
+      status,
+      memberEmail,
+      memberName,
+      oldStatus,
+      amount,
     }: { 
       paymentId: string; 
       status: "pending" | "completed" | "failed" | "refunded";
+      memberEmail?: string;
+      memberName?: string;
+      oldStatus?: string;
+      amount?: number;
     }) => {
       const updateData: Record<string, unknown> = { status };
       
@@ -155,6 +211,18 @@ export function useUpdatePaymentStatus() {
         .eq("id", paymentId);
 
       if (error) throw error;
+
+      // Send email notification if we have member details
+      if (memberEmail && memberName && oldStatus) {
+        await sendNotificationEmail(
+          memberEmail,
+          memberName,
+          "payment_status",
+          oldStatus,
+          status,
+          amount ? `Amount: GHS ${amount.toFixed(2)}` : undefined
+        );
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "payments"] });
