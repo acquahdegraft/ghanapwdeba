@@ -23,18 +23,16 @@ export default function AdminDashboard() {
     }
   }, [isAdmin, adminLoading, navigate]);
 
-  if (adminLoading) {
+  // Security: Don't render ANY admin UI until role verification is complete
+  // This prevents information disclosure about admin features during loading
+  if (adminLoading || !isAdmin) {
     return (
-      <DashboardLayout title="Admin Dashboard" description="Loading...">
+      <DashboardLayout title="Dashboard" description="Verifying access...">
         <div className="flex h-64 items-center justify-center">
           <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent" />
         </div>
       </DashboardLayout>
     );
-  }
-
-  if (!isAdmin) {
-    return null;
   }
 
   return (
