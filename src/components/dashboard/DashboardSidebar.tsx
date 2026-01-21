@@ -10,6 +10,7 @@ import {
   HelpCircle,
   ChevronRight,
   Shield,
+  Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -20,6 +21,7 @@ const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Payments & Dues", href: "/dashboard/payments", icon: CreditCard },
   { name: "My Profile", href: "/dashboard/profile", icon: User },
+  { name: "Member Directory", href: "/dashboard/directory", icon: Users },
   { name: "Events", href: "/dashboard/events", icon: Calendar },
   { name: "Resources", href: "/dashboard/resources", icon: FileText },
 ];
