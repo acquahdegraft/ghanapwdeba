@@ -53,6 +53,95 @@ export type Database = {
         }
         Relationships: []
       }
+      event_registrations: {
+        Row: {
+          event_id: string
+          id: string
+          notes: string | null
+          registered_at: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          event_id: string
+          id?: string
+          notes?: string | null
+          registered_at?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          event_id?: string
+          id?: string
+          notes?: string | null
+          registered_at?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_registrations_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      events: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          end_date: string | null
+          event_date: string
+          event_type: string
+          id: string
+          is_published: boolean
+          location: string | null
+          location_type: string
+          max_attendees: number | null
+          registration_deadline: string | null
+          title: string
+          updated_at: string
+          virtual_link: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          end_date?: string | null
+          event_date: string
+          event_type?: string
+          id?: string
+          is_published?: boolean
+          location?: string | null
+          location_type?: string
+          max_attendees?: number | null
+          registration_deadline?: string | null
+          title: string
+          updated_at?: string
+          virtual_link?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          end_date?: string | null
+          event_date?: string
+          event_type?: string
+          id?: string
+          is_published?: boolean
+          location?: string | null
+          location_type?: string
+          max_attendees?: number | null
+          registration_deadline?: string | null
+          title?: string
+          updated_at?: string
+          virtual_link?: string | null
+        }
+        Relationships: []
+      }
       membership_types: {
         Row: {
           annual_dues: number
@@ -142,6 +231,7 @@ export type Database = {
           email: string
           full_name: string
           id: string
+          is_public_directory: boolean
           membership_expiry_date: string | null
           membership_start_date: string | null
           membership_status: Database["public"]["Enums"]["membership_status"]
@@ -163,6 +253,7 @@ export type Database = {
           email: string
           full_name: string
           id?: string
+          is_public_directory?: boolean
           membership_expiry_date?: string | null
           membership_start_date?: string | null
           membership_status?: Database["public"]["Enums"]["membership_status"]
@@ -184,6 +275,7 @@ export type Database = {
           email?: string
           full_name?: string
           id?: string
+          is_public_directory?: boolean
           membership_expiry_date?: string | null
           membership_start_date?: string | null
           membership_status?: Database["public"]["Enums"]["membership_status"]

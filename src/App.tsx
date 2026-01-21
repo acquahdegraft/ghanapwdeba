@@ -11,6 +11,8 @@ import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import Payments from "./pages/Payments";
 import Profile from "./pages/Profile";
+import Directory from "./pages/Directory";
+import Events from "./pages/Events";
 import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 
@@ -56,6 +58,22 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <AdminDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/directory"
+              element={
+                <ProtectedRoute>
+                  <Directory />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/events"
+              element={
+                <ProtectedRoute>
+                  <Events />
                 </ProtectedRoute>
               }
             />

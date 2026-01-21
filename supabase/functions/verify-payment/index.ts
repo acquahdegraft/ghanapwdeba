@@ -150,7 +150,7 @@ serve(async (req) => {
       console.error("Error updating payment:", updateError);
     }
 
-    // If payment successful, update membership status using VERIFIED user_id from database
+    // If payment successful, update membership status and send receipt
     if (paymentStatus === "completed") {
       // SECURITY: Use the verified user_id from our database, not from Paystack metadata
       const verifiedUserId = paymentRecord.user_id;
@@ -172,6 +172,31 @@ serve(async (req) => {
         console.error("Error updating profile:", profileError);
       } else {
         console.log(`Membership activated for user ${verifiedUserId} until ${newExpiryDate.toISOString().split("T")[0]}`);
+      }
+
+      // Get payment ID for sending receipt
+      const { data: payment } = await supabaseAdmin
+        .from("payments")
+        .select("id")
+        .eq("transaction_reference", reference)
+        .single();
+
+      // Send payment receipt email (fire and forget)
+      if (payment?.id) {
+        try {
+          await fetch(`${supabaseUrl}/functions/v1/send-payment-receipt`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: authHeader,
+            },
+            body: JSON.stringify({ paymentId: payment.id }),
+          });
+          console.log("Receipt email request sent");
+        } catch (emailError) {
+          console.error("Failed to send receipt email:", emailError);
+          // Don't fail the request if email fails
+        }
       }
     }
 
