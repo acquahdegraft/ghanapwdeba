@@ -140,18 +140,26 @@ export function ProfileForm() {
 
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
+      // Security: Use signed URL for private bucket instead of public URL
+      // Store the file path in the database, and generate signed URLs when needed
+      const { data: signedUrlData, error: urlError } = await supabase.storage
         .from("avatars")
-        .getPublicUrl(filePath);
+        .createSignedUrl(filePath, 60 * 60 * 24 * 7); // 7 days expiry
 
+      if (urlError) throw urlError;
+
+      // Store the file path (not the full URL) for regenerating signed URLs later
+      // For now, store the signed URL - can be refreshed on profile load
+      const avatarPath = filePath;
+      
       const { error: updateError } = await supabase
         .from("profiles")
-        .update({ avatar_url: publicUrl })
+        .update({ avatar_url: avatarPath })
         .eq("user_id", user.id);
 
       if (updateError) throw updateError;
 
-      setAvatarUrl(publicUrl);
+      setAvatarUrl(signedUrlData.signedUrl);
       queryClient.invalidateQueries({ queryKey: ["profile"] });
       toast({
         title: "Photo Updated",

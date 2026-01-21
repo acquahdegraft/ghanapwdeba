@@ -22,6 +22,40 @@ export interface Profile {
   updated_at: string;
 }
 
+// Helper function to get signed URL for avatar
+async function getSignedAvatarUrl(avatarPath: string | null): Promise<string | null> {
+  if (!avatarPath) return null;
+  
+  // If it's already a full URL (legacy data), return as-is
+  if (avatarPath.startsWith('http://') || avatarPath.startsWith('https://')) {
+    // For legacy URLs that were stored as full public URLs,
+    // try to extract the path and get a signed URL
+    const pathMatch = avatarPath.match(/\/avatars\/(.+)$/);
+    if (pathMatch) {
+      const { data, error } = await supabase.storage
+        .from("avatars")
+        .createSignedUrl(pathMatch[1], 60 * 60 * 24); // 24 hours
+      
+      if (!error && data) {
+        return data.signedUrl;
+      }
+    }
+    return avatarPath; // Return original if we can't extract path
+  }
+  
+  // It's a file path, generate signed URL
+  const { data, error } = await supabase.storage
+    .from("avatars")
+    .createSignedUrl(avatarPath, 60 * 60 * 24); // 24 hours
+  
+  if (error) {
+    console.error("Error generating signed URL for avatar:", error);
+    return null;
+  }
+  
+  return data.signedUrl;
+}
+
 export function useProfile() {
   const { user } = useAuth();
 
@@ -37,6 +71,16 @@ export function useProfile() {
         .maybeSingle();
 
       if (error) throw error;
+      
+      if (data) {
+        // Generate signed URL for avatar if it exists
+        const signedAvatarUrl = await getSignedAvatarUrl(data.avatar_url);
+        return {
+          ...data,
+          avatar_url: signedAvatarUrl,
+        } as Profile;
+      }
+      
       return data as Profile | null;
     },
     enabled: !!user,
