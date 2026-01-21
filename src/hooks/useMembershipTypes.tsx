@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useAdminRole } from "./useAdminRole";
 import { toast } from "sonner";
 
 export interface MembershipType {
@@ -37,7 +36,6 @@ export function useMembershipTypes(includeInactive = false) {
 
 export function useCreateMembershipType() {
   const queryClient = useQueryClient();
-  const { data: isAdmin } = useAdminRole();
 
   return useMutation({
     mutationFn: async (newType: {
@@ -46,8 +44,7 @@ export function useCreateMembershipType() {
       annual_dues: number;
       benefits?: string[];
     }) => {
-      if (!isAdmin) throw new Error("Unauthorized");
-
+      // RLS policies enforce admin-only access - this is just for UX
       const { data, error } = await supabase
         .from("membership_types")
         .insert({
@@ -68,14 +65,17 @@ export function useCreateMembershipType() {
       toast.success("Membership type created successfully");
     },
     onError: (error) => {
-      toast.error("Failed to create membership type: " + error.message);
+      // Handle RLS permission denied errors gracefully
+      const message = error.message.includes("row-level security") 
+        ? "You don't have permission to perform this action"
+        : error.message;
+      toast.error("Failed to create membership type: " + message);
     },
   });
 }
 
 export function useUpdateMembershipType() {
   const queryClient = useQueryClient();
-  const { data: isAdmin } = useAdminRole();
 
   return useMutation({
     mutationFn: async ({
@@ -89,8 +89,7 @@ export function useUpdateMembershipType() {
       benefits?: string[];
       is_active?: boolean;
     }) => {
-      if (!isAdmin) throw new Error("Unauthorized");
-
+      // RLS policies enforce admin-only access - this is just for UX
       const { data, error } = await supabase
         .from("membership_types")
         .update(updates)
@@ -106,19 +105,20 @@ export function useUpdateMembershipType() {
       toast.success("Membership type updated successfully");
     },
     onError: (error) => {
-      toast.error("Failed to update membership type: " + error.message);
+      const message = error.message.includes("row-level security") 
+        ? "You don't have permission to perform this action"
+        : error.message;
+      toast.error("Failed to update membership type: " + message);
     },
   });
 }
 
 export function useToggleMembershipTypeStatus() {
   const queryClient = useQueryClient();
-  const { data: isAdmin } = useAdminRole();
 
   return useMutation({
     mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
-      if (!isAdmin) throw new Error("Unauthorized");
-
+      // RLS policies enforce admin-only access - this is just for UX
       const { error } = await supabase
         .from("membership_types")
         .update({ is_active })
@@ -135,7 +135,10 @@ export function useToggleMembershipTypeStatus() {
       );
     },
     onError: (error) => {
-      toast.error("Failed to update status: " + error.message);
+      const message = error.message.includes("row-level security") 
+        ? "You don't have permission to perform this action"
+        : error.message;
+      toast.error("Failed to update status: " + message);
     },
   });
 }

@@ -57,7 +57,6 @@ export function useAllAnnouncements() {
 export function useCreateAnnouncement() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const { data: isAdmin } = useAdminRole();
 
   return useMutation({
     mutationFn: async (newAnnouncement: {
@@ -68,8 +67,9 @@ export function useCreateAnnouncement() {
       publish_date?: string;
       expire_date?: string;
     }) => {
-      if (!isAdmin || !user) throw new Error("Unauthorized");
+      if (!user) throw new Error("Not authenticated");
 
+      // RLS policies enforce admin-only access - this is just for UX
       const { data, error } = await supabase
         .from("announcements")
         .insert({
@@ -92,14 +92,16 @@ export function useCreateAnnouncement() {
       toast.success("Announcement created successfully");
     },
     onError: (error) => {
-      toast.error("Failed to create announcement: " + error.message);
+      const message = error.message.includes("row-level security") 
+        ? "You don't have permission to perform this action"
+        : error.message;
+      toast.error("Failed to create announcement: " + message);
     },
   });
 }
 
 export function useUpdateAnnouncement() {
   const queryClient = useQueryClient();
-  const { data: isAdmin } = useAdminRole();
 
   return useMutation({
     mutationFn: async ({
@@ -114,8 +116,7 @@ export function useUpdateAnnouncement() {
       publish_date?: string | null;
       expire_date?: string | null;
     }) => {
-      if (!isAdmin) throw new Error("Unauthorized");
-
+      // RLS policies enforce admin-only access - this is just for UX
       const { data, error } = await supabase
         .from("announcements")
         .update(updates)
@@ -131,19 +132,20 @@ export function useUpdateAnnouncement() {
       toast.success("Announcement updated successfully");
     },
     onError: (error) => {
-      toast.error("Failed to update announcement: " + error.message);
+      const message = error.message.includes("row-level security") 
+        ? "You don't have permission to perform this action"
+        : error.message;
+      toast.error("Failed to update announcement: " + message);
     },
   });
 }
 
 export function useDeleteAnnouncement() {
   const queryClient = useQueryClient();
-  const { data: isAdmin } = useAdminRole();
 
   return useMutation({
     mutationFn: async (id: string) => {
-      if (!isAdmin) throw new Error("Unauthorized");
-
+      // RLS policies enforce admin-only access - this is just for UX
       const { error } = await supabase
         .from("announcements")
         .delete()
@@ -156,7 +158,10 @@ export function useDeleteAnnouncement() {
       toast.success("Announcement deleted successfully");
     },
     onError: (error) => {
-      toast.error("Failed to delete announcement: " + error.message);
+      const message = error.message.includes("row-level security") 
+        ? "You don't have permission to perform this action"
+        : error.message;
+      toast.error("Failed to delete announcement: " + message);
     },
   });
 }
