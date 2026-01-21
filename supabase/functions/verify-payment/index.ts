@@ -60,6 +60,8 @@ serve(async (req) => {
       );
     }
 
+    const authenticatedUserId = claimsData.user.id;
+
     // Parse and validate request body
     let requestBody: unknown;
     try {
@@ -81,6 +83,30 @@ serve(async (req) => {
     }
 
     console.log(`Verifying payment: ${reference}`);
+
+    // SECURITY: First verify the authenticated user owns this payment
+    const { data: paymentRecord, error: paymentError } = await supabase
+      .from("payments")
+      .select("user_id, status")
+      .eq("transaction_reference", reference)
+      .single();
+
+    if (paymentError || !paymentRecord) {
+      console.error("Payment not found:", paymentError?.message);
+      return new Response(
+        JSON.stringify({ error: "Payment not found" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // SECURITY: Verify ownership - authenticated user must own the payment
+    if (paymentRecord.user_id !== authenticatedUserId) {
+      console.error(`Unauthorized: User ${authenticatedUserId} attempted to verify payment owned by ${paymentRecord.user_id}`);
+      return new Response(
+        JSON.stringify({ error: "Unauthorized: You can only verify your own payments" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Verify transaction with Paystack
     const verifyResponse = await fetch(
@@ -110,7 +136,7 @@ serve(async (req) => {
     const paymentStatus = transactionStatus === "success" ? "completed" : 
                           transactionStatus === "failed" ? "failed" : "pending";
 
-    // Update payment record
+    // Update payment record using admin client
     const { error: updateError } = await supabaseAdmin
       .from("payments")
       .update({
@@ -124,11 +150,12 @@ serve(async (req) => {
       console.error("Error updating payment:", updateError);
     }
 
-    // If payment successful, update membership status
-    if (paymentStatus === "completed" && verifyData.data.metadata?.user_id) {
-      const userId = verifyData.data.metadata.user_id;
+    // If payment successful, update membership status using VERIFIED user_id from database
+    if (paymentStatus === "completed") {
+      // SECURITY: Use the verified user_id from our database, not from Paystack metadata
+      const verifiedUserId = paymentRecord.user_id;
       
-      // Calculate new expiry date (1 year from now or from current expiry)
+      // Calculate new expiry date (1 year from now)
       const newExpiryDate = new Date();
       newExpiryDate.setFullYear(newExpiryDate.getFullYear() + 1);
 
@@ -139,12 +166,12 @@ serve(async (req) => {
           membership_start_date: new Date().toISOString().split("T")[0],
           membership_expiry_date: newExpiryDate.toISOString().split("T")[0],
         })
-        .eq("user_id", userId);
+        .eq("user_id", verifiedUserId);
 
       if (profileError) {
         console.error("Error updating profile:", profileError);
       } else {
-        console.log(`Membership activated for user until ${newExpiryDate.toISOString().split("T")[0]}`);
+        console.log(`Membership activated for user ${verifiedUserId} until ${newExpiryDate.toISOString().split("T")[0]}`);
       }
     }
 

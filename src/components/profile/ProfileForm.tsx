@@ -30,14 +30,41 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
+// Ghana phone number regex: supports +233XXXXXXXXX, 233XXXXXXXXX, 0XXXXXXXXX formats
+const ghanaPhoneRegex = /^(\+233|233|0)?[0-9]{9,10}$/;
+
 const profileSchema = z.object({
-  full_name: z.string().min(2, "Name must be at least 2 characters"),
-  phone: z.string().optional(),
-  business_name: z.string().optional(),
-  business_type: z.string().optional(),
-  disability_type: z.string().optional(),
-  region: z.string().optional(),
-  city: z.string().optional(),
+  full_name: z.string()
+    .min(2, "Name must be at least 2 characters")
+    .max(100, "Name must be less than 100 characters"),
+  phone: z.string()
+    .max(15, "Phone number is too long")
+    .refine(
+      (val) => !val || val === "" || ghanaPhoneRegex.test(val.replace(/\s/g, "")),
+      { message: "Please enter a valid Ghana phone number (e.g., 0244123456 or +233244123456)" }
+    )
+    .optional()
+    .or(z.literal("")),
+  business_name: z.string()
+    .max(200, "Business name must be less than 200 characters")
+    .optional()
+    .or(z.literal("")),
+  business_type: z.string()
+    .max(100, "Business type must be less than 100 characters")
+    .optional()
+    .or(z.literal("")),
+  disability_type: z.string()
+    .max(50, "Invalid disability type")
+    .optional()
+    .or(z.literal("")),
+  region: z.string()
+    .max(100, "Region name is too long")
+    .optional()
+    .or(z.literal("")),
+  city: z.string()
+    .max(100, "District name is too long")
+    .optional()
+    .or(z.literal("")),
 });
 
 type ProfileFormData = z.infer<typeof profileSchema>;
