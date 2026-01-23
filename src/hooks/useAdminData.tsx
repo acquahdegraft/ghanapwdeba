@@ -3,15 +3,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAdminRole } from "./useAdminRole";
 import { toast } from "sonner";
 
+// MemberProfile excludes sensitive fields (disability_type, phone) for privacy
+// These fields are only accessible via direct profiles table queries with super_admin role
 export interface MemberProfile {
   id: string;
   user_id: string;
   full_name: string;
   email: string;
-  phone: string | null;
   business_name: string | null;
   business_type: string | null;
-  disability_type: string | null;
   region: string | null;
   city: string | null;
   membership_status: string;
@@ -74,8 +74,10 @@ export function useAllMembers() {
   return useQuery({
     queryKey: ["admin", "members"],
     queryFn: async () => {
+      // Use admin_members view which excludes sensitive fields (disability_type, phone)
+      // This protects member privacy while allowing admins to manage memberships
       const { data, error } = await supabase
-        .from("profiles")
+        .from("admin_members")
         .select("*")
         .order("created_at", { ascending: false });
 

@@ -321,6 +321,77 @@ export type Database = {
       }
     }
     Views: {
+      admin_members: {
+        Row: {
+          avatar_url: string | null
+          business_name: string | null
+          business_type: string | null
+          city: string | null
+          created_at: string | null
+          email: string | null
+          full_name: string | null
+          id: string | null
+          is_public_directory: boolean | null
+          membership_expiry_date: string | null
+          membership_start_date: string | null
+          membership_status:
+            | Database["public"]["Enums"]["membership_status"]
+            | null
+          membership_type_id: string | null
+          region: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          business_name?: string | null
+          business_type?: string | null
+          city?: string | null
+          created_at?: string | null
+          email?: string | null
+          full_name?: string | null
+          id?: string | null
+          is_public_directory?: boolean | null
+          membership_expiry_date?: string | null
+          membership_start_date?: string | null
+          membership_status?:
+            | Database["public"]["Enums"]["membership_status"]
+            | null
+          membership_type_id?: string | null
+          region?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          business_name?: string | null
+          business_type?: string | null
+          city?: string | null
+          created_at?: string | null
+          email?: string | null
+          full_name?: string | null
+          id?: string | null
+          is_public_directory?: boolean | null
+          membership_expiry_date?: string | null
+          membership_start_date?: string | null
+          membership_status?:
+            | Database["public"]["Enums"]["membership_status"]
+            | null
+          membership_type_id?: string | null
+          region?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_membership_type_id_fkey"
+            columns: ["membership_type_id"]
+            isOneToOne: false
+            referencedRelation: "membership_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       directory_members: {
         Row: {
           avatar_url: string | null
