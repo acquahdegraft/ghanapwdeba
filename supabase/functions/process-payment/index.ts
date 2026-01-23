@@ -1,9 +1,12 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
+import { checkRateLimit, createRateLimitResponse, getRateLimitHeaders, type RateLimitConfig } from "../_shared/rate-limit.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+// Rate limit: 5 payment initiations per hour per user
+const PAYMENT_RATE_LIMIT: RateLimitConfig = {
+  maxRequests: 5,
+  windowMs: 60 * 60 * 1000, // 1 hour
 };
 
 // Input validation helpers
@@ -63,9 +66,11 @@ function validatePaymentRequest(data: unknown): {
 }
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+  
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return handleCorsPreflightRequest(req);
   }
 
   try {
@@ -110,6 +115,13 @@ serve(async (req) => {
     }
 
     const userId = claimsData.user.id;
+    
+    // Apply rate limiting per user
+    const rateLimitResult = checkRateLimit(`payment:${userId}`, PAYMENT_RATE_LIMIT);
+    if (!rateLimitResult.allowed) {
+      console.warn(`Rate limit exceeded for user ${userId}`);
+      return createRateLimitResponse(rateLimitResult, corsHeaders);
+    }
     
     // Parse and validate input
     let requestBody: unknown;
@@ -203,14 +215,21 @@ serve(async (req) => {
         display_text: paystackData.data.display_text || "Please authorize the payment on your phone",
         payment_id: paymentRecord.id,
       }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { 
+        status: 200, 
+        headers: { 
+          ...corsHeaders, 
+          ...getRateLimitHeaders(rateLimitResult),
+          "Content-Type": "application/json" 
+        } 
+      }
     );
 
   } catch (error: unknown) {
     console.error("Payment processing error:", error);
     return new Response(
       JSON.stringify({ error: "An error occurred. Please try again or contact support." }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
     );
   }
 });

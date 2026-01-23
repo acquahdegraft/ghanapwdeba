@@ -1,10 +1,13 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
+import { checkRateLimit, createRateLimitResponse, getRateLimitHeaders, type RateLimitConfig } from "../_shared/rate-limit.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+// Rate limit: 10 receipt requests per minute per user
+const RECEIPT_RATE_LIMIT: RateLimitConfig = {
+  maxRequests: 10,
+  windowMs: 60 * 1000, // 1 minute
 };
 
 // Input validation
@@ -22,8 +25,10 @@ interface PaymentReceiptRequest {
 }
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+  
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return handleCorsPreflightRequest(req);
   }
 
   try {
@@ -65,6 +70,13 @@ serve(async (req) => {
     }
 
     const userId = claimsData.user.id;
+
+    // Apply rate limiting per user
+    const rateLimitResult = checkRateLimit(`receipt:${userId}`, RECEIPT_RATE_LIMIT);
+    if (!rateLimitResult.allowed) {
+      console.warn(`Rate limit exceeded for user ${userId}`);
+      return createRateLimitResponse(rateLimitResult, corsHeaders);
+    }
 
     // Parse and validate input
     let body: PaymentReceiptRequest;
@@ -213,14 +225,21 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({ success: true, emailId: (emailResponse as any).id || "sent" }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { 
+        status: 200, 
+        headers: { 
+          ...corsHeaders, 
+          ...getRateLimitHeaders(rateLimitResult),
+          "Content-Type": "application/json" 
+        } 
+      }
     );
 
   } catch (error: unknown) {
     console.error("Error sending receipt:", error);
     return new Response(
       JSON.stringify({ error: "Failed to send receipt" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
     );
   }
 });
