@@ -14,7 +14,10 @@ export function useAdminRole() {
         .rpc("is_admin");
 
       if (error) {
-        console.error("Error checking admin role:", error);
+        // Only log errors in development to prevent information leakage
+        if (import.meta.env.DEV) {
+          console.error("Error checking admin role:", error);
+        }
         return false;
       }
       

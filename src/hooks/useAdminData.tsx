@@ -58,13 +58,19 @@ async function sendNotificationEmail(
       },
     });
 
-    if (response.error) {
-      console.error("Failed to send notification email:", response.error);
-    } else {
-      console.log("Notification email sent successfully");
+    // Only log in development to prevent information leakage
+    if (import.meta.env.DEV) {
+      if (response.error) {
+        console.error("Failed to send notification email:", response.error);
+      } else {
+        console.log("Notification email sent successfully");
+      }
     }
   } catch (error) {
-    console.error("Error sending notification email:", error);
+    // Only log errors in development to prevent information leakage
+    if (import.meta.env.DEV) {
+      console.error("Error sending notification email:", error);
+    }
   }
 }
 

@@ -27,7 +27,10 @@ async function getSignedAvatarUrl(avatarPath: string | null): Promise<string | n
     .createSignedUrl(filePath, 3600); // 1 hour expiry
   
   if (error) {
-    console.error("Error creating signed URL:", error);
+    // Only log errors in development to prevent information leakage
+    if (import.meta.env.DEV) {
+      console.error("Error creating signed URL:", error);
+    }
     return null;
   }
   
