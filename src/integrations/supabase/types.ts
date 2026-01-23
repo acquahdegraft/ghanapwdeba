@@ -321,7 +321,48 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      directory_members: {
+        Row: {
+          avatar_url: string | null
+          business_name: string | null
+          business_type: string | null
+          city: string | null
+          full_name: string | null
+          id: string | null
+          membership_status:
+            | Database["public"]["Enums"]["membership_status"]
+            | null
+          region: string | null
+          user_id: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          business_name?: string | null
+          business_type?: string | null
+          city?: string | null
+          full_name?: string | null
+          id?: string | null
+          membership_status?:
+            | Database["public"]["Enums"]["membership_status"]
+            | null
+          region?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          business_name?: string | null
+          business_type?: string | null
+          city?: string | null
+          full_name?: string | null
+          id?: string | null
+          membership_status?:
+            | Database["public"]["Enums"]["membership_status"]
+            | null
+          region?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       has_role: {
