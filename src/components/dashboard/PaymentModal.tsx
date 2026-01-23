@@ -44,14 +44,21 @@ const providerConfig = {
   },
 };
 
+// Rate limiting: prevent rapid payment initiations
+const MIN_PAYMENT_INTERVAL = 60000; // 1 minute between payment attempts
+let lastPaymentTime = 0;
+
 export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "membership_dues" }: PaymentModalProps) {
   const [step, setStep] = useState<PaymentStep>("input");
   const [provider, setProvider] = useState<Provider>("mtn");
   const [phone, setPhone] = useState("");
   const [reference, setReference] = useState("");
   const [displayText, setDisplayText] = useState("");
+  const [consecutiveErrors, setConsecutiveErrors] = useState(0);
   const { user, session } = useAuth();
   const queryClient = useQueryClient();
+
+  const MAX_CONSECUTIVE_ERRORS = 3;
 
   // Reset on close
   useEffect(() => {
@@ -61,6 +68,7 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
         setPhone("");
         setReference("");
         setDisplayText("");
+        setConsecutiveErrors(0);
       }, 300);
     }
   }, [open]);
@@ -75,6 +83,15 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
       toast.error("Please log in to make a payment");
       return;
     }
+
+    // Rate limiting: prevent rapid payment initiations
+    const now = Date.now();
+    if (now - lastPaymentTime < MIN_PAYMENT_INTERVAL) {
+      const waitSeconds = Math.ceil((MIN_PAYMENT_INTERVAL - (now - lastPaymentTime)) / 1000);
+      toast.error(`Please wait ${waitSeconds} seconds before initiating another payment`);
+      return;
+    }
+    lastPaymentTime = now;
 
     setStep("processing");
 
@@ -111,6 +128,7 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
   const pollPaymentStatus = async (ref: string) => {
     let attempts = 0;
     const maxAttempts = 60; // 5 minutes with 5-second intervals
+    let errorCount = 0;
 
     const checkStatus = async () => {
       attempts++;
@@ -121,6 +139,9 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
         });
 
         if (error) throw error;
+
+        // Reset error count on successful response
+        errorCount = 0;
 
         if (data.status === "completed") {
           setStep("success");
@@ -134,16 +155,28 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
           return;
         }
 
-        // Still pending, continue polling
+        // Still pending, continue polling with exponential backoff
         if (attempts < maxAttempts) {
-          setTimeout(() => checkStatus(), 5000);
+          // Exponential backoff: 5s, 7.5s, 10s, 12.5s... capped at 30s
+          const delay = Math.min(5000 + (attempts * 2500), 30000);
+          setTimeout(() => checkStatus(), delay);
         } else {
           toast.info("Payment is still processing. Check your payment history later.");
         }
       } catch (error) {
         console.error("Verification error:", error);
+        errorCount++;
+        
+        // Circuit breaker: stop polling after consecutive errors
+        if (errorCount >= MAX_CONSECUTIVE_ERRORS) {
+          setConsecutiveErrors(errorCount);
+          toast.error("Payment verification failed repeatedly. Please check your payment history or contact support.");
+          return;
+        }
+        
         if (attempts < maxAttempts) {
-          setTimeout(() => checkStatus(), 5000);
+          // Longer delay after errors
+          setTimeout(() => checkStatus(), 10000);
         }
       }
     };
