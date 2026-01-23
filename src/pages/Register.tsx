@@ -78,8 +78,10 @@ export default function Register() {
       return;
     }
     
-    toast.success("Account created successfully! Welcome to GPWDEBA.");
-    navigate("/dashboard");
+    toast.success("Please check your email to verify your account before signing in.", {
+      duration: 8000,
+    });
+    navigate("/login");
   };
 
   return (
