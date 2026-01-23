@@ -34,6 +34,21 @@ async function getSignedAvatarUrl(avatarPath: string | null): Promise<string | n
   return data.signedUrl;
 }
 
+// Sanitize search input to prevent expensive pattern matching attacks
+function sanitizeSearchQuery(query: string): string {
+  // Trim and limit length to 100 characters
+  let sanitized = query.trim().slice(0, 100);
+  
+  // Escape special LIKE pattern characters that could cause expensive queries
+  // These characters have special meaning in SQL LIKE patterns
+  sanitized = sanitized
+    .replace(/%/g, '')  // Remove wildcards
+    .replace(/_/g, '')  // Remove single character wildcards
+    .replace(/\\/g, ''); // Remove escape characters
+  
+  return sanitized;
+}
+
 export function useDirectory(searchQuery: string, regionFilter: string) {
   const { user } = useAuth();
 
@@ -46,8 +61,11 @@ export function useDirectory(searchQuery: string, regionFilter: string) {
         .from("directory_members")
         .select("id, full_name, business_name, business_type, region, city, avatar_url, membership_status");
 
-      if (searchQuery) {
-        query = query.or(`full_name.ilike.%${searchQuery}%,business_name.ilike.%${searchQuery}%,business_type.ilike.%${searchQuery}%`);
+      // Sanitize user input before using in query
+      const sanitizedQuery = sanitizeSearchQuery(searchQuery);
+      
+      if (sanitizedQuery.length > 0) {
+        query = query.or(`full_name.ilike.%${sanitizedQuery}%,business_name.ilike.%${sanitizedQuery}%,business_type.ilike.%${sanitizedQuery}%`);
       }
 
       if (regionFilter && regionFilter !== "all") {
