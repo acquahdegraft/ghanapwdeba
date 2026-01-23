@@ -1,7 +1,17 @@
 project_id = "pxqbxhlfvafcjfpycjsh"
 
+# Edge Function JWT Configuration
+# verify_jwt = false is required for:
+# 1. CORS preflight (OPTIONS) requests which don't include auth headers
+# 2. These functions implement manual JWT verification via getClaims() for security
+# 3. Manual auth allows proper error responses instead of Supabase's default 401
+
 [functions.send-notification]
+# Manually verifies JWT and checks admin role (lines 26-67 in index.ts)
+# Only admins can send notifications - enforced via is_admin() RPC check
 verify_jwt = false
 
 [functions.send-payment-receipt]
+# Manually verifies JWT and user ownership (lines 31-66 in index.ts)
+# Users can only receive receipts for their own payments
 verify_jwt = false

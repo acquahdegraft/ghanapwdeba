@@ -1,5 +1,3 @@
-import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MembersTable } from "@/components/admin/MembersTable";
@@ -7,33 +5,14 @@ import { PaymentsTable } from "@/components/admin/PaymentsTable";
 import { AdminStats } from "@/components/admin/AdminStats";
 import { DuesManagement } from "@/components/admin/DuesManagement";
 import { AnnouncementsManagement } from "@/components/admin/AnnouncementsManagement";
-import { useAdminRole } from "@/hooks/useAdminRole";
 import { useAllMembers, useAllPayments } from "@/hooks/useAdminData";
 import { Users, CreditCard, DollarSign, Megaphone } from "lucide-react";
 
 export default function AdminDashboard() {
-  const navigate = useNavigate();
-  const { data: isAdmin, isLoading: adminLoading } = useAdminRole();
+  // Admin access is enforced at route level via ProtectedRoute requireAdmin
+  // These hooks are only for data fetching, not access control
   const { data: members = [], isLoading: membersLoading } = useAllMembers();
   const { data: payments = [], isLoading: paymentsLoading } = useAllPayments();
-
-  useEffect(() => {
-    if (!adminLoading && !isAdmin) {
-      navigate("/dashboard");
-    }
-  }, [isAdmin, adminLoading, navigate]);
-
-  // Security: Don't render ANY admin UI until role verification is complete
-  // This prevents information disclosure about admin features during loading
-  if (adminLoading || !isAdmin) {
-    return (
-      <DashboardLayout title="Dashboard" description="Verifying access...">
-        <div className="flex h-64 items-center justify-center">
-          <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-        </div>
-      </DashboardLayout>
-    );
-  }
 
   return (
     <DashboardLayout
