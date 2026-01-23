@@ -80,6 +80,7 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const paystackSecretKey = Deno.env.get("PAYSTACK_SECRET_KEY");
 
     if (!paystackSecretKey) {
@@ -93,6 +94,9 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
     });
+
+    // Service role client for inserting payments (users can't insert directly)
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
     // Verify user
     const token = authHeader.replace("Bearer ", "");
@@ -168,8 +172,8 @@ serve(async (req) => {
       );
     }
 
-    // Create pending payment record
-    const { data: paymentRecord, error: insertError } = await supabase
+    // Create pending payment record using service role (users can't insert directly)
+    const { data: paymentRecord, error: insertError } = await supabaseAdmin
       .from("payments")
       .insert({
         user_id: userId,

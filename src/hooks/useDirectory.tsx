@@ -40,11 +40,11 @@ export function useDirectory(searchQuery: string, regionFilter: string) {
   return useQuery({
     queryKey: ["directory", searchQuery, regionFilter],
     queryFn: async () => {
+      // Use the secure directory_members view which only exposes safe fields
+      // This view excludes sensitive data like email, phone, and disability_type
       let query = supabase
-        .from("profiles")
-        .select("id, full_name, business_name, business_type, region, city, avatar_url, membership_status, is_public_directory")
-        .eq("is_public_directory", true)
-        .eq("membership_status", "active");
+        .from("directory_members")
+        .select("id, full_name, business_name, business_type, region, city, avatar_url, membership_status");
 
       if (searchQuery) {
         query = query.or(`full_name.ilike.%${searchQuery}%,business_name.ilike.%${searchQuery}%,business_type.ilike.%${searchQuery}%`);
