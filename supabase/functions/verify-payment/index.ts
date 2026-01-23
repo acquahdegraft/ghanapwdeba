@@ -1,9 +1,12 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
+import { checkRateLimit, createRateLimitResponse, getRateLimitHeaders, type RateLimitConfig } from "../_shared/rate-limit.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+// Rate limit: 30 verification attempts per minute per user (for polling)
+const VERIFY_RATE_LIMIT: RateLimitConfig = {
+  maxRequests: 30,
+  windowMs: 60 * 1000, // 1 minute
 };
 
 // Validate reference format (alphanumeric, reasonable length)
@@ -17,8 +20,10 @@ function validateReference(reference: unknown): reference is string {
 }
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+  
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return handleCorsPreflightRequest(req);
   }
 
   try {
@@ -61,6 +66,13 @@ serve(async (req) => {
     }
 
     const authenticatedUserId = claimsData.user.id;
+
+    // Apply rate limiting per user
+    const rateLimitResult = checkRateLimit(`verify:${authenticatedUserId}`, VERIFY_RATE_LIMIT);
+    if (!rateLimitResult.allowed) {
+      console.warn(`Rate limit exceeded for user ${authenticatedUserId}`);
+      return createRateLimitResponse(rateLimitResult, corsHeaders);
+    }
 
     // Parse and validate request body
     let requestBody: unknown;
@@ -128,7 +140,14 @@ serve(async (req) => {
           error: "Unable to verify payment. Please try again.",
           verified: false 
         }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { 
+          status: 200, 
+          headers: { 
+            ...corsHeaders, 
+            ...getRateLimitHeaders(rateLimitResult),
+            "Content-Type": "application/json" 
+          } 
+        }
       );
     }
 
@@ -207,14 +226,21 @@ serve(async (req) => {
         amount: verifyData.data.amount / 100,
         reference: verifyData.data.reference,
       }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { 
+        status: 200, 
+        headers: { 
+          ...corsHeaders, 
+          ...getRateLimitHeaders(rateLimitResult),
+          "Content-Type": "application/json" 
+        } 
+      }
     );
 
   } catch (error: unknown) {
     console.error("Verification error:", error);
     return new Response(
       JSON.stringify({ error: "Verification failed. Please try again or contact support." }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } }
     );
   }
 });

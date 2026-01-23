@@ -1,10 +1,12 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
+import { checkRateLimit, createRateLimitResponse, getRateLimitHeaders, type RateLimitConfig } from "../_shared/rate-limit.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+// Rate limit: 20 notifications per minute per admin
+const NOTIFICATION_RATE_LIMIT: RateLimitConfig = {
+  maxRequests: 20,
+  windowMs: 60 * 1000, // 1 minute
 };
 
 interface NotificationRequest {
@@ -17,9 +19,11 @@ interface NotificationRequest {
 }
 
 const handler = async (req: Request): Promise<Response> => {
+  const corsHeaders = getCorsHeaders(req);
+  
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return handleCorsPreflightRequest(req);
   }
 
   try {
@@ -45,10 +49,10 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Verify JWT token and get user
     const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
+    const { data: userData, error: userError } = await supabase.auth.getUser(token);
     
-    if (claimsError || !claimsData?.claims) {
-      console.error("JWT verification failed:", claimsError);
+    if (userError || !userData?.user) {
+      console.error("JWT verification failed:", userError);
       return new Response(
         JSON.stringify({ error: "Invalid token" }),
         { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -64,6 +68,13 @@ const handler = async (req: Request): Promise<Response> => {
         JSON.stringify({ error: "Forbidden: Admin access required" }),
         { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
+    }
+
+    // Apply rate limiting per admin user
+    const rateLimitResult = checkRateLimit(`notification:${userData.user.id}`, NOTIFICATION_RATE_LIMIT);
+    if (!rateLimitResult.allowed) {
+      console.warn(`Rate limit exceeded for admin ${userData.user.id}`);
+      return createRateLimitResponse(rateLimitResult, corsHeaders);
     }
 
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
@@ -180,6 +191,7 @@ const handler = async (req: Request): Promise<Response> => {
       headers: {
         "Content-Type": "application/json",
         ...corsHeaders,
+        ...getRateLimitHeaders(rateLimitResult),
       },
     });
   } catch (error: unknown) {
@@ -189,7 +201,7 @@ const handler = async (req: Request): Promise<Response> => {
       JSON.stringify({ error: errorMessage }),
       {
         status: 500,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
+        headers: { "Content-Type": "application/json", ...getCorsHeaders(req) },
       }
     );
   }
