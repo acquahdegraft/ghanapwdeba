@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
+import { PasswordStrengthIndicator } from "@/components/auth/PasswordStrengthIndicator";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -150,9 +151,7 @@ export default function ResetPassword() {
                       )}
                     </button>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    Must be at least 8 characters
-                  </p>
+                  <PasswordStrengthIndicator password={password} />
                 </div>
 
                 <div className="space-y-2">
