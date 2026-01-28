@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Eye, EyeOff, LogIn, ArrowRight } from "lucide-react";
+import { Eye, EyeOff, LogIn, ArrowRight, Mail, RefreshCw } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,6 +19,8 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showResendOption, setShowResendOption] = useState(false);
+  const [isResending, setIsResending] = useState(false);
   const navigate = useNavigate();
   const { signIn, user } = useAuth();
 
@@ -46,6 +49,7 @@ export default function Login() {
       if (error.message.includes("Invalid login credentials")) {
         toast.error("Invalid email or password. Please try again.");
       } else if (error.message.includes("Email not confirmed")) {
+        setShowResendOption(true);
         toast.error("Please confirm your email before signing in.");
       } else {
         toast.error(error.message);
@@ -55,6 +59,33 @@ export default function Login() {
     
     toast.success("Welcome back!");
     navigate("/dashboard");
+  };
+
+  const handleResendVerification = async () => {
+    if (!email) {
+      toast.error("Please enter your email address first.");
+      return;
+    }
+
+    setIsResending(true);
+    
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/verify-email`,
+      },
+    });
+
+    setIsResending(false);
+
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    toast.success("Verification email sent! Please check your inbox.");
+    setShowResendOption(false);
   };
 
   return (
@@ -144,6 +175,43 @@ export default function Login() {
                 </>
               )}
             </Button>
+
+            {/* Resend Verification Email */}
+            {showResendOption && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950">
+                <div className="flex items-start gap-3">
+                  <Mail className="mt-0.5 h-5 w-5 text-amber-600 dark:text-amber-500" />
+                  <div className="flex-1 space-y-2">
+                    <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                      Email not verified
+                    </p>
+                    <p className="text-xs text-amber-700 dark:text-amber-300">
+                      Didn't receive the verification email? We can send it again.
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleResendVerification}
+                      disabled={isResending}
+                      className="mt-1 border-amber-300 text-amber-700 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-300 dark:hover:bg-amber-900"
+                    >
+                      {isResending ? (
+                        <>
+                          <RefreshCw className="mr-2 h-3 w-3 animate-spin" />
+                          Sending...
+                        </>
+                      ) : (
+                        <>
+                          <Mail className="mr-2 h-3 w-3" />
+                          Resend verification email
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
           </form>
 
           {/* Footer */}
