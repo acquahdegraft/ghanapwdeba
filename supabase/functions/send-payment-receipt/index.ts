@@ -118,7 +118,7 @@ serve(async (req) => {
     // Fetch profile
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("full_name, email")
+      .select("full_name, email, notify_payment_receipts")
       .eq("user_id", userId)
       .single();
 
@@ -126,6 +126,14 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ error: "Profile not found" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Check if user has payment receipts enabled
+    if (!profile.notify_payment_receipts) {
+      return new Response(
+        JSON.stringify({ success: true, message: "Payment receipts disabled by user preference" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 

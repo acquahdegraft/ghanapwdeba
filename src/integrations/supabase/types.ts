@@ -242,6 +242,9 @@ export type Database = {
           membership_start_date: string | null
           membership_status: Database["public"]["Enums"]["membership_status"]
           membership_type_id: string | null
+          notify_announcements: boolean
+          notify_event_reminders: boolean
+          notify_payment_receipts: boolean
           phone: string | null
           region: string | null
           updated_at: string
@@ -264,6 +267,9 @@ export type Database = {
           membership_start_date?: string | null
           membership_status?: Database["public"]["Enums"]["membership_status"]
           membership_type_id?: string | null
+          notify_announcements?: boolean
+          notify_event_reminders?: boolean
+          notify_payment_receipts?: boolean
           phone?: string | null
           region?: string | null
           updated_at?: string
@@ -286,6 +292,9 @@ export type Database = {
           membership_start_date?: string | null
           membership_status?: Database["public"]["Enums"]["membership_status"]
           membership_type_id?: string | null
+          notify_announcements?: boolean
+          notify_event_reminders?: boolean
+          notify_payment_receipts?: boolean
           phone?: string | null
           region?: string | null
           updated_at?: string

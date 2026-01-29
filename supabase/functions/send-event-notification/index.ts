@@ -79,12 +79,13 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Use service role to fetch all active members
+    // Use service role to fetch all active members who have announcements enabled
     const serviceClient = createClient(supabaseUrl, supabaseServiceRole);
     const { data: activeMembers, error: membersError } = await serviceClient
       .from("profiles")
-      .select("email, full_name")
-      .eq("membership_status", "active");
+      .select("email, full_name, notify_announcements")
+      .eq("membership_status", "active")
+      .eq("notify_announcements", true);
 
     if (membersError) {
       console.error("Error fetching members:", membersError);
@@ -93,7 +94,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (!activeMembers || activeMembers.length === 0) {
       return new Response(
-        JSON.stringify({ message: "No active members to notify", count: 0 }),
+        JSON.stringify({ message: "No active members with announcements enabled to notify", count: 0 }),
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
