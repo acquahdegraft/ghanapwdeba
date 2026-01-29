@@ -17,6 +17,7 @@ export interface MemberProfile {
   membership_status: string;
   membership_start_date: string | null;
   membership_expiry_date: string | null;
+  membership_type_id: string | null;
   created_at: string;
 }
 
