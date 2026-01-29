@@ -200,86 +200,65 @@ export function MemberImport() {
     setIsImporting(true);
     setImportProgress(0);
 
-    const result: ImportResult = {
-      success: 0,
-      failed: 0,
-      errors: [],
-    };
+    try {
+      // Get current session for auth
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
 
-    // Get existing emails to prevent duplicates
-    const { data: existingProfiles } = await supabase
-      .from("profiles")
-      .select("email");
-    const existingEmails = new Set((existingProfiles || []).map((p) => p.email.toLowerCase()));
-
-    for (let i = 0; i < parsedData.length; i++) {
-      const member = parsedData[i];
-      
-      try {
-        // Check if email already exists
-        if (existingEmails.has(member.email.toLowerCase())) {
-          result.failed++;
-          result.errors.push({
-            row: i + 2,
-            email: member.email,
-            error: "Email already exists",
-          });
-          continue;
-        }
-
-        // Create auth user first (using admin API via edge function would be better, but for now we'll just create profile)
-        // For this implementation, we'll create profiles without auth users
-        // In production, you'd want an edge function that uses service_role to create auth users
-        
-        // Generate a temporary user_id (in production, this should come from auth user creation)
-        const tempUserId = crypto.randomUUID();
-
-        const { error } = await supabase.from("profiles").insert({
-          user_id: tempUserId,
-          full_name: member.full_name,
-          email: member.email,
-          phone: member.phone,
-          region: member.region,
-          city: member.city,
-          business_name: member.business_name,
-          business_type: member.business_type,
-          disability_type: member.disability_type as any,
-          membership_status: (member.membership_status || "pending") as any,
-        });
-
-        if (error) {
-          result.failed++;
-          result.errors.push({
-            row: i + 2,
-            email: member.email,
-            error: error.message,
-          });
-        } else {
-          result.success++;
-          existingEmails.add(member.email.toLowerCase());
-        }
-      } catch (error: any) {
-        result.failed++;
-        result.errors.push({
-          row: i + 2,
-          email: member.email,
-          error: error.message || "Unknown error",
-        });
+      if (!accessToken) {
+        toast.error("Authentication required");
+        setIsImporting(false);
+        return;
       }
 
-      setImportProgress(Math.round(((i + 1) / parsedData.length) * 100));
-    }
+      // Call edge function to import members with proper auth user creation
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/import-members`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({ members: parsedData }),
+        }
+      );
 
-    setImportResult(result);
-    setIsImporting(false);
+      const result = await response.json();
 
-    if (result.success > 0) {
-      queryClient.invalidateQueries({ queryKey: ["admin", "members"] });
-      toast.success(`Successfully imported ${result.success} members`);
-    }
+      if (!response.ok) {
+        toast.error(result.error || "Import failed");
+        setIsImporting(false);
+        return;
+      }
 
-    if (result.failed > 0) {
-      toast.warning(`${result.failed} members failed to import`);
+      // Transform result to match expected format
+      const importResult: ImportResult = {
+        success: result.success || 0,
+        failed: result.failed || 0,
+        errors: (result.errors || []).map((err: { email: string; error: string }, index: number) => ({
+          row: index + 2,
+          email: err.email,
+          error: err.error,
+        })),
+      };
+
+      setImportResult(importResult);
+      setImportProgress(100);
+
+      if (importResult.success > 0) {
+        queryClient.invalidateQueries({ queryKey: ["admin", "members"] });
+        toast.success(`Successfully imported ${importResult.success} members with auth accounts`);
+      }
+
+      if (importResult.failed > 0) {
+        toast.warning(`${importResult.failed} members failed to import`);
+      }
+    } catch (error: unknown) {
+      console.error("Import error:", error);
+      toast.error("An error occurred during import");
+    } finally {
+      setIsImporting(false);
     }
   };
 

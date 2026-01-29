@@ -30,3 +30,8 @@ verify_jwt = false
 # Cron-triggered function to send event reminders
 # Uses service role - no JWT verification needed
 verify_jwt = false
+
+[functions.import-members]
+# Admin-only function to import members with proper auth user creation
+# Manually verifies JWT and checks admin role
+verify_jwt = false
