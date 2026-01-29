@@ -2,6 +2,7 @@ import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { ProfileForm } from "@/components/profile/ProfileForm";
 import { MembershipCard } from "@/components/profile/MembershipCard";
 import { PasswordChangeForm } from "@/components/profile/PasswordChangeForm";
+import { NotificationPreferences } from "@/components/profile/NotificationPreferences";
 
 export default function Profile() {
   return (
@@ -13,6 +14,7 @@ export default function Profile() {
         <div className="lg:col-span-2 space-y-6">
           <ProfileForm />
           <PasswordChangeForm />
+          <NotificationPreferences />
         </div>
         <div>
           <MembershipCard />

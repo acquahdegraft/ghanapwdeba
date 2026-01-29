@@ -74,17 +74,24 @@ const handler = async (req: Request): Promise<Response> => {
         continue;
       }
 
-      // Get profile info for all registered users
+      // Get profile info for all registered users who have event reminders enabled
       const userIds = registrations.map((r) => r.user_id);
       const { data: profiles, error: profilesError } = await supabaseAdmin
         .from("profiles")
-        .select("user_id, full_name, email")
-        .in("user_id", userIds);
+        .select("user_id, full_name, email, notify_event_reminders")
+        .in("user_id", userIds)
+        .eq("notify_event_reminders", true);
 
       if (profilesError) {
         console.error(`Error fetching profiles for event ${event.id}:`, profilesError);
         eventErrors.push(`Failed to fetch profiles: ${profilesError.message}`);
         results.push({ eventId: event.id, emailsSent: 0, errors: eventErrors });
+        continue;
+      }
+
+      if (!profiles || profiles.length === 0) {
+        console.log(`No profiles with reminders enabled for event ${event.id}`);
+        results.push({ eventId: event.id, emailsSent: 0, errors: [] });
         continue;
       }
 
