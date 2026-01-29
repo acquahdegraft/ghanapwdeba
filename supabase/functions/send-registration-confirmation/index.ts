@@ -1,29 +1,29 @@
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
 
 interface RegistrationConfirmationRequest {
   eventId: string;
   userId: string;
 }
 
-const handler = async (req: Request): Promise<Response> => {
+Deno.serve(async (req) => {
+  // Handle CORS preflight with origin validation
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return handleCorsPreflightRequest(req);
   }
+
+  const corsHeaders = getCorsHeaders(req);
 
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      throw new Error("No authorization header");
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const supabaseClient = createClient(
@@ -38,14 +38,28 @@ const handler = async (req: Request): Promise<Response> => {
 
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
     if (authError || !user) {
-      throw new Error("Unauthorized");
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const { eventId, userId }: RegistrationConfirmationRequest = await req.json();
 
+    // Validate input
+    if (!eventId || !userId) {
+      return new Response(
+        JSON.stringify({ error: "Missing required fields" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Verify the user is registering for themselves
     if (user.id !== userId) {
-      throw new Error("Cannot send confirmation for another user");
+      return new Response(
+        JSON.stringify({ error: "Cannot send confirmation for another user" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // Get event details
@@ -56,7 +70,10 @@ const handler = async (req: Request): Promise<Response> => {
       .single();
 
     if (eventError || !event) {
-      throw new Error("Event not found");
+      return new Response(
+        JSON.stringify({ error: "Event not found" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // Get user profile
@@ -67,7 +84,10 @@ const handler = async (req: Request): Promise<Response> => {
       .single();
 
     if (profileError || !profile) {
-      throw new Error("User profile not found");
+      return new Response(
+        JSON.stringify({ error: "User profile not found" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const eventDate = new Date(event.event_date).toLocaleDateString("en-US", {
@@ -79,11 +99,23 @@ const handler = async (req: Request): Promise<Response> => {
       minute: "2-digit",
     });
 
+    // Sanitize user-controlled data to prevent XSS in emails
+    const sanitizeHtml = (str: string | null): string => {
+      if (!str) return "";
+      return str.replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    };
+
+    const sanitizedName = sanitizeHtml(profile.full_name);
+    const sanitizedTitle = sanitizeHtml(event.title);
+    const sanitizedLocation = sanitizeHtml(event.location);
+    const sanitizedVirtualLink = sanitizeHtml(event.virtual_link);
+    const sanitizedDescription = sanitizeHtml(event.description);
+
     const locationInfo = event.location_type === "virtual" 
-      ? `<p><strong>Join Link:</strong> <a href="${event.virtual_link}">${event.virtual_link}</a></p>`
+      ? `<p><strong>Join Link:</strong> <a href="${sanitizedVirtualLink}">${sanitizedVirtualLink}</a></p>`
       : event.location_type === "hybrid"
-      ? `<p><strong>Location:</strong> ${event.location || "TBA"}</p><p><strong>Virtual Link:</strong> <a href="${event.virtual_link}">${event.virtual_link}</a></p>`
-      : `<p><strong>Location:</strong> ${event.location || "TBA"}</p>`;
+      ? `<p><strong>Location:</strong> ${sanitizedLocation || "TBA"}</p><p><strong>Virtual Link:</strong> <a href="${sanitizedVirtualLink}">${sanitizedVirtualLink}</a></p>`
+      : `<p><strong>Location:</strong> ${sanitizedLocation || "TBA"}</p>`;
 
     const emailResponse = await resend.emails.send({
       from: "GPWDEBA <noreply@ghanapwdeba.lovable.app>",
@@ -110,15 +142,15 @@ const handler = async (req: Request): Promise<Response> => {
               <span class="badge">✓ You're registered</span>
             </div>
             <div class="content">
-              <p>Dear ${profile.full_name},</p>
+              <p>Dear ${sanitizedName},</p>
               <p>Great news! Your registration for the following event has been confirmed:</p>
               
               <div class="event-details">
-                <h2 style="margin-top: 0; color: #1e40af;">${event.title}</h2>
+                <h2 style="margin-top: 0; color: #1e40af;">${sanitizedTitle}</h2>
                 <p><strong>Date & Time:</strong> ${eventDate}</p>
                 <p><strong>Type:</strong> ${event.event_type.charAt(0).toUpperCase() + event.event_type.slice(1)} (${event.location_type})</p>
                 ${locationInfo}
-                ${event.description ? `<p><strong>Description:</strong> ${event.description}</p>` : ""}
+                ${sanitizedDescription ? `<p><strong>Description:</strong> ${sanitizedDescription}</p>` : ""}
               </div>
               
               <p>We look forward to seeing you there!</p>
@@ -143,16 +175,15 @@ const handler = async (req: Request): Promise<Response> => {
       status: 200,
       headers: { "Content-Type": "application/json", ...corsHeaders },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
     console.error("Error sending registration confirmation:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: "An error occurred" }),
       {
         status: 500,
         headers: { "Content-Type": "application/json", ...corsHeaders },
       }
     );
   }
-};
-
-serve(handler);
+});
