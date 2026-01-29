@@ -14,6 +14,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -57,6 +58,8 @@ import {
   MapPin,
   Users,
   Video,
+  ClipboardList,
+  Send,
 } from "lucide-react";
 import {
   AdminEvent,
@@ -67,6 +70,8 @@ import {
   useDeleteEvent,
   useToggleEventPublish,
 } from "@/hooks/useAdminEvents";
+import { AttendanceDialog } from "./AttendanceDialog";
+import { useSendEventNotification } from "@/hooks/useBulkMemberActions";
 
 const eventTypes = [
   { value: "meetup", label: "Meetup" },
@@ -105,12 +110,15 @@ export function EventsManagement() {
   const [editingEvent, setEditingEvent] = useState<AdminEvent | null>(null);
   const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
   const [formData, setFormData] = useState<EventFormData>(initialFormData);
+  const [attendanceEvent, setAttendanceEvent] = useState<AdminEvent | null>(null);
+  const [isAttendanceOpen, setIsAttendanceOpen] = useState(false);
 
   const { data: events = [], isLoading } = useAdminEvents();
   const createEvent = useCreateEvent();
   const updateEvent = useUpdateEvent();
   const deleteEvent = useDeleteEvent();
   const togglePublish = useToggleEventPublish();
+  const sendNotification = useSendEventNotification();
 
   const filteredEvents = events.filter((event) =>
     event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -171,6 +179,21 @@ export function EventsManagement() {
 
   const handleTogglePublish = (event: AdminEvent) => {
     togglePublish.mutate({ eventId: event.id, isPublished: !event.is_published });
+  };
+
+  const handleOpenAttendance = (event: AdminEvent) => {
+    setAttendanceEvent(event);
+    setIsAttendanceOpen(true);
+  };
+
+  const handleSendNotification = (event: AdminEvent) => {
+    sendNotification.mutate({
+      eventId: event.id,
+      eventTitle: event.title,
+      eventDate: format(parseISO(event.event_date), "MMMM d, yyyy 'at' h:mm a"),
+      eventLocation: event.location || undefined,
+      eventDescription: event.description || undefined,
+    });
   };
 
   const getLocationIcon = (locationType: string) => {
@@ -306,6 +329,10 @@ export function EventsManagement() {
                               <Pencil className="mr-2 h-4 w-4" />
                               Edit
                             </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleOpenAttendance(event)}>
+                              <ClipboardList className="mr-2 h-4 w-4" />
+                              Attendance
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleTogglePublish(event)}>
                               {event.is_published ? (
                                 <>
@@ -319,6 +346,15 @@ export function EventsManagement() {
                                 </>
                               )}
                             </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              onClick={() => handleSendNotification(event)}
+                              disabled={sendNotification.isPending}
+                            >
+                              <Send className="mr-2 h-4 w-4" />
+                              Notify Members
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
                             <DropdownMenuItem
                               onClick={() => {
                                 setDeletingEventId(event.id);
@@ -553,6 +589,13 @@ export function EventsManagement() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Attendance Dialog */}
+      <AttendanceDialog
+        event={attendanceEvent}
+        open={isAttendanceOpen}
+        onOpenChange={setIsAttendanceOpen}
+      />
     </Card>
   );
 }

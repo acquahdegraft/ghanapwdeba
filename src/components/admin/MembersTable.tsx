@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,9 +26,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { MoreHorizontal, Search, UserCheck, UserX, Clock, Ban, Download, X } from "lucide-react";
+import { MoreHorizontal, Search, UserCheck, UserX, Clock, Ban, Download, X, Users } from "lucide-react";
 import { MemberProfile, useUpdateMembershipStatus } from "@/hooks/useAdminData";
 import { useMembershipTypes } from "@/hooks/useMembershipTypes";
+import { useBulkUpdateMemberStatus } from "@/hooks/useBulkMemberActions";
 import { ghanaRegions } from "@/lib/ghanaRegions";
 import { exportToCSV, formatDateForExport } from "@/lib/csvExport";
 
@@ -49,8 +51,10 @@ export function MembersTable({ members, isLoading }: MembersTableProps) {
   const [statusFilter, setStatusFilter] = useState("all");
   const [regionFilter, setRegionFilter] = useState("all");
   const [membershipTypeFilter, setMembershipTypeFilter] = useState("all");
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   
   const updateStatus = useUpdateMembershipStatus();
+  const bulkUpdateStatus = useBulkUpdateMemberStatus();
   const { data: membershipTypes = [] } = useMembershipTypes();
 
   const filteredMembers = useMemo(() => {
@@ -133,6 +137,62 @@ export function MembersTable({ members, isLoading }: MembersTableProps) {
     setStatusFilter("all");
     setRegionFilter("all");
     setMembershipTypeFilter("all");
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(filteredMembers?.map((m) => m.id) || []);
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleSelectOne = (id: string, checked: boolean) => {
+    if (checked) {
+      setSelectedIds((prev) => [...prev, id]);
+    } else {
+      setSelectedIds((prev) => prev.filter((i) => i !== id));
+    }
+  };
+
+  const handleBulkAction = (status: "active" | "pending" | "expired" | "suspended") => {
+    if (selectedIds.length === 0) return;
+    bulkUpdateStatus.mutate({ profileIds: selectedIds, status });
+    setSelectedIds([]);
+  };
+
+  const handleExportSelected = () => {
+    const selectedMembers = filteredMembers?.filter((m) => selectedIds.includes(m.id)) || [];
+    const exportData = selectedMembers.map((member) => {
+      const membershipType = membershipTypes.find(
+        (t) => t.id === member.membership_type_id
+      );
+      return {
+        ...member,
+        membership_type_name: membershipType?.name || "",
+        membership_start_date_formatted: formatDateForExport(member.membership_start_date),
+        membership_expiry_date_formatted: formatDateForExport(member.membership_expiry_date),
+        created_at_formatted: formatDateForExport(member.created_at),
+      };
+    });
+
+    const columns = [
+      { key: "full_name" as const, label: "Full Name" },
+      { key: "email" as const, label: "Email" },
+      { key: "business_name" as const, label: "Business Name" },
+      { key: "business_type" as const, label: "Business Type" },
+      { key: "region" as const, label: "Region" },
+      { key: "city" as const, label: "City" },
+      { key: "membership_status" as const, label: "Status" },
+      { key: "membership_type_name" as const, label: "Membership Type" },
+      { key: "membership_start_date_formatted" as const, label: "Start Date" },
+      { key: "membership_expiry_date_formatted" as const, label: "Expiry Date" },
+      { key: "created_at_formatted" as const, label: "Joined Date" },
+    ];
+
+    const filename = `selected_members_${format(new Date(), "yyyy-MM-dd")}.csv`;
+    exportToCSV(exportData, filename, columns);
+    setSelectedIds([]);
   };
 
   const hasActiveFilters =
@@ -223,6 +283,48 @@ export function MembersTable({ members, isLoading }: MembersTableProps) {
               </Button>
             )}
           </div>
+
+          {/* Bulk Actions */}
+          {selectedIds.length > 0 && (
+            <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
+              <Users className="h-4 w-4" />
+              <span className="text-sm font-medium">{selectedIds.length} selected</span>
+              <div className="flex-1" />
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleBulkAction("active")}
+                disabled={bulkUpdateStatus.isPending}
+              >
+                <UserCheck className="mr-1 h-4 w-4 text-green-600" />
+                Activate
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleBulkAction("suspended")}
+                disabled={bulkUpdateStatus.isPending}
+              >
+                <Ban className="mr-1 h-4 w-4 text-gray-600" />
+                Suspend
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleExportSelected}
+              >
+                <Download className="mr-1 h-4 w-4" />
+                Export
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setSelectedIds([])}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
         </div>
 
         {isLoading ? (
@@ -234,6 +336,15 @@ export function MembersTable({ members, isLoading }: MembersTableProps) {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-12">
+                    <Checkbox
+                      checked={
+                        filteredMembers && filteredMembers.length > 0 &&
+                        selectedIds.length === filteredMembers.length
+                      }
+                      onCheckedChange={handleSelectAll}
+                    />
+                  </TableHead>
                   <TableHead>Member</TableHead>
                   <TableHead>Business</TableHead>
                   <TableHead>Location</TableHead>
@@ -246,13 +357,19 @@ export function MembersTable({ members, isLoading }: MembersTableProps) {
               <TableBody>
                 {filteredMembers?.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground">
+                    <TableCell colSpan={8} className="text-center text-muted-foreground">
                       No members found
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredMembers?.map((member) => (
                     <TableRow key={member.id}>
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedIds.includes(member.id)}
+                          onCheckedChange={(checked) => handleSelectOne(member.id, checked as boolean)}
+                        />
+                      </TableCell>
                       <TableCell>
                         <div>
                           <p className="font-medium">{member.full_name}</p>
