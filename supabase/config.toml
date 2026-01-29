@@ -25,3 +25,8 @@ verify_jwt = false
 # Manually verifies JWT and user ownership
 # Users receive confirmation when registering for events
 verify_jwt = false
+
+[functions.send-event-reminder]
+# Cron-triggered function to send event reminders
+# Uses service role - no JWT verification needed
+verify_jwt = false
