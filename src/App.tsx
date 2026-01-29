@@ -17,6 +17,7 @@ import Profile from "./pages/Profile";
 import Directory from "./pages/Directory";
 import MemberProfile from "./pages/MemberProfile";
 import Events from "./pages/Events";
+import Resources from "./pages/Resources";
 import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 
@@ -89,6 +90,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Events />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/resources"
+              element={
+                <ProtectedRoute>
+                  <Resources />
                 </ProtectedRoute>
               }
             />
