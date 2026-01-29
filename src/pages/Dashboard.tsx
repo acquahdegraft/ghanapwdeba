@@ -3,7 +3,7 @@ import { StatCard } from "@/components/dashboard/StatCard";
 import { PaymentCard } from "@/components/dashboard/PaymentCard";
 import { MembershipStatusCard } from "@/components/dashboard/MembershipStatusCard";
 import { QuickActions } from "@/components/dashboard/QuickActions";
-import { UpcomingEvents } from "@/components/dashboard/UpcomingEvents";
+import { EventsWidget } from "@/components/dashboard/EventsWidget";
 import { AnnouncementsBanner } from "@/components/dashboard/AnnouncementsBanner";
 import { CreditCard, Calendar, FileText, Users } from "lucide-react";
 import { useProfile } from "@/hooks/useProfile";
@@ -101,7 +101,7 @@ export default function Dashboard() {
 
         {/* Middle Column - Events */}
         <div className="lg:col-span-1">
-          <UpcomingEvents />
+          <EventsWidget />
         </div>
 
         {/* Right Column - Quick Actions */}

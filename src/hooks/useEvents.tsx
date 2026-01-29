@@ -121,12 +121,27 @@ export function useRegisterForEvent() {
         .single();
 
       if (error) throw error;
+
+      // Send confirmation email (non-blocking)
+      try {
+        const { data: session } = await supabase.auth.getSession();
+        await supabase.functions.invoke("send-registration-confirmation", {
+          body: { eventId, userId: user.id },
+          headers: {
+            Authorization: `Bearer ${session?.session?.access_token}`,
+          },
+        });
+      } catch (emailError) {
+        console.error("Failed to send confirmation email:", emailError);
+        // Don't throw - registration succeeded, email is nice-to-have
+      }
+
       return data;
     },
     onSuccess: () => {
       toast({
         title: "Registered!",
-        description: "You have successfully registered for this event.",
+        description: "You have successfully registered for this event. A confirmation email has been sent.",
       });
       queryClient.invalidateQueries({ queryKey: ["events"] });
       queryClient.invalidateQueries({ queryKey: ["my-registrations"] });
