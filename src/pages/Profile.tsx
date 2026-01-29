@@ -1,6 +1,7 @@
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { ProfileForm } from "@/components/profile/ProfileForm";
 import { MembershipCard } from "@/components/profile/MembershipCard";
+import { PasswordChangeForm } from "@/components/profile/PasswordChangeForm";
 
 export default function Profile() {
   return (
@@ -9,8 +10,9 @@ export default function Profile() {
       description="Manage your personal information and membership details."
     >
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 space-y-6">
           <ProfileForm />
+          <PasswordChangeForm />
         </div>
         <div>
           <MembershipCard />
