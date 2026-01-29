@@ -15,3 +15,8 @@ verify_jwt = false
 # Manually verifies JWT and user ownership (lines 31-66 in index.ts)
 # Users can only receive receipts for their own payments
 verify_jwt = false
+
+[functions.send-event-notification]
+# Manually verifies JWT and checks admin role
+# Only admins can send event notifications to members
+verify_jwt = false
