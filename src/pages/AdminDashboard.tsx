@@ -5,8 +5,9 @@ import { PaymentsTable } from "@/components/admin/PaymentsTable";
 import { AdminStats } from "@/components/admin/AdminStats";
 import { DuesManagement } from "@/components/admin/DuesManagement";
 import { AnnouncementsManagement } from "@/components/admin/AnnouncementsManagement";
+import { EventsManagement } from "@/components/admin/EventsManagement";
 import { useAllMembers, useAllPayments } from "@/hooks/useAdminData";
-import { Users, CreditCard, DollarSign, Megaphone } from "lucide-react";
+import { Users, CreditCard, DollarSign, Megaphone, Calendar } from "lucide-react";
 
 export default function AdminDashboard() {
   // Admin access is enforced at route level via ProtectedRoute requireAdmin
@@ -17,7 +18,7 @@ export default function AdminDashboard() {
   return (
     <DashboardLayout
       title="Admin Dashboard"
-      description="Manage members, payments, dues, and announcements"
+      description="Manage members, payments, dues, events, and announcements"
     >
       {/* Stats Overview */}
       <div className="mb-8">
@@ -26,22 +27,26 @@ export default function AdminDashboard() {
 
       {/* Tabs for all admin sections */}
       <Tabs defaultValue="members" className="space-y-6">
-        <TabsList className="grid w-full max-w-2xl grid-cols-4">
+        <TabsList className="grid w-full max-w-3xl grid-cols-5">
           <TabsTrigger value="members" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
-            Members
+            <span className="hidden sm:inline">Members</span>
           </TabsTrigger>
           <TabsTrigger value="payments" className="flex items-center gap-2">
             <CreditCard className="h-4 w-4" />
-            Payments
+            <span className="hidden sm:inline">Payments</span>
           </TabsTrigger>
           <TabsTrigger value="dues" className="flex items-center gap-2">
             <DollarSign className="h-4 w-4" />
-            Dues
+            <span className="hidden sm:inline">Dues</span>
+          </TabsTrigger>
+          <TabsTrigger value="events" className="flex items-center gap-2">
+            <Calendar className="h-4 w-4" />
+            <span className="hidden sm:inline">Events</span>
           </TabsTrigger>
           <TabsTrigger value="announcements" className="flex items-center gap-2">
             <Megaphone className="h-4 w-4" />
-            Announcements
+            <span className="hidden sm:inline">Announcements</span>
           </TabsTrigger>
         </TabsList>
 
@@ -55,6 +60,10 @@ export default function AdminDashboard() {
 
         <TabsContent value="dues">
           <DuesManagement />
+        </TabsContent>
+
+        <TabsContent value="events">
+          <EventsManagement />
         </TabsContent>
 
         <TabsContent value="announcements">

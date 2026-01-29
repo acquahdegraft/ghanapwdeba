@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { format, parseISO, addYears } from "date-fns";
 import {
   Table,
@@ -18,23 +18,65 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { MoreHorizontal, Search, UserCheck, UserX, Clock, Ban } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { MoreHorizontal, Search, UserCheck, UserX, Clock, Ban, Download, X } from "lucide-react";
 import { MemberProfile, useUpdateMembershipStatus } from "@/hooks/useAdminData";
+import { useMembershipTypes } from "@/hooks/useMembershipTypes";
+import { ghanaRegions } from "@/lib/ghanaRegions";
+import { exportToCSV, formatDateForExport } from "@/lib/csvExport";
 
 interface MembersTableProps {
   members: MemberProfile[];
   isLoading: boolean;
 }
 
+const membershipStatuses = [
+  { value: "all", label: "All Statuses" },
+  { value: "active", label: "Active" },
+  { value: "pending", label: "Pending" },
+  { value: "expired", label: "Expired" },
+  { value: "suspended", label: "Suspended" },
+];
+
 export function MembersTable({ members, isLoading }: MembersTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [regionFilter, setRegionFilter] = useState("all");
+  const [membershipTypeFilter, setMembershipTypeFilter] = useState("all");
+  
   const updateStatus = useUpdateMembershipStatus();
+  const { data: membershipTypes = [] } = useMembershipTypes();
 
-  const filteredMembers = members?.filter((member) =>
-    member.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    member.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    member.business_name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredMembers = useMemo(() => {
+    return members?.filter((member) => {
+      // Search filter
+      const matchesSearch =
+        member.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        member.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        member.business_name?.toLowerCase().includes(searchTerm.toLowerCase());
+
+      // Status filter
+      const matchesStatus =
+        statusFilter === "all" || member.membership_status === statusFilter;
+
+      // Region filter
+      const matchesRegion =
+        regionFilter === "all" || member.region === regionFilter;
+
+      // Membership type filter
+      const matchesMembershipType =
+        membershipTypeFilter === "all" ||
+        member.membership_type_id === membershipTypeFilter;
+
+      return matchesSearch && matchesStatus && matchesRegion && matchesMembershipType;
+    });
+  }, [members, searchTerm, statusFilter, regionFilter, membershipTypeFilter]);
 
   const handleStatusUpdate = (
     member: MemberProfile,
@@ -53,6 +95,48 @@ export function MembersTable({ members, isLoading }: MembersTableProps) {
       oldStatus: member.membership_status,
     });
   };
+
+  const handleExportCSV = () => {
+    const exportData = filteredMembers.map((member) => {
+      const membershipType = membershipTypes.find(
+        (t) => t.id === member.membership_type_id
+      );
+      return {
+        ...member,
+        membership_type_name: membershipType?.name || "",
+        membership_start_date_formatted: formatDateForExport(member.membership_start_date),
+        membership_expiry_date_formatted: formatDateForExport(member.membership_expiry_date),
+        created_at_formatted: formatDateForExport(member.created_at),
+      };
+    });
+
+    const columns = [
+      { key: "full_name" as const, label: "Full Name" },
+      { key: "email" as const, label: "Email" },
+      { key: "business_name" as const, label: "Business Name" },
+      { key: "business_type" as const, label: "Business Type" },
+      { key: "region" as const, label: "Region" },
+      { key: "city" as const, label: "City" },
+      { key: "membership_status" as const, label: "Status" },
+      { key: "membership_type_name" as const, label: "Membership Type" },
+      { key: "membership_start_date_formatted" as const, label: "Start Date" },
+      { key: "membership_expiry_date_formatted" as const, label: "Expiry Date" },
+      { key: "created_at_formatted" as const, label: "Joined Date" },
+    ];
+
+    const filename = `members_export_${format(new Date(), "yyyy-MM-dd")}.csv`;
+    exportToCSV(exportData, filename, columns);
+  };
+
+  const clearFilters = () => {
+    setSearchTerm("");
+    setStatusFilter("all");
+    setRegionFilter("all");
+    setMembershipTypeFilter("all");
+  };
+
+  const hasActiveFilters =
+    searchTerm || statusFilter !== "all" || regionFilter !== "all" || membershipTypeFilter !== "all";
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -75,18 +159,72 @@ export function MembersTable({ members, isLoading }: MembersTableProps) {
             <CardTitle>Members</CardTitle>
             <CardDescription>Manage member accounts and membership statuses</CardDescription>
           </div>
-          <div className="relative w-72">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search members..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
+          <Button variant="outline" onClick={handleExportCSV} disabled={!filteredMembers?.length}>
+            <Download className="mr-2 h-4 w-4" />
+            Export CSV
+          </Button>
         </div>
       </CardHeader>
       <CardContent>
+        {/* Filters */}
+        <div className="mb-6 space-y-4">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search by name, email, or business..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                {membershipStatuses.map((status) => (
+                  <SelectItem key={status.value} value={status.value}>
+                    {status.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={regionFilter} onValueChange={setRegionFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Region" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Regions</SelectItem>
+                {ghanaRegions.map((region) => (
+                  <SelectItem key={region.name} value={region.name}>
+                    {region.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={membershipTypeFilter} onValueChange={setMembershipTypeFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Membership Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                {membershipTypes.map((type) => (
+                  <SelectItem key={type.id} value={type.id}>
+                    {type.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {hasActiveFilters && (
+              <Button variant="ghost" size="sm" onClick={clearFilters}>
+                <X className="mr-2 h-4 w-4" />
+                Clear
+              </Button>
+            )}
+          </div>
+        </div>
+
         {isLoading ? (
           <div className="flex h-32 items-center justify-center">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
