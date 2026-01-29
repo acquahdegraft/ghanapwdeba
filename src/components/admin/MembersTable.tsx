@@ -32,6 +32,7 @@ import { useMembershipTypes } from "@/hooks/useMembershipTypes";
 import { useBulkUpdateMemberStatus } from "@/hooks/useBulkMemberActions";
 import { ghanaRegions } from "@/lib/ghanaRegions";
 import { exportToCSV, formatDateForExport } from "@/lib/csvExport";
+import { MemberImport } from "./MemberImport";
 
 interface MembersTableProps {
   members: MemberProfile[];
@@ -219,10 +220,13 @@ export function MembersTable({ members, isLoading }: MembersTableProps) {
             <CardTitle>Members</CardTitle>
             <CardDescription>Manage member accounts and membership statuses</CardDescription>
           </div>
-          <Button variant="outline" onClick={handleExportCSV} disabled={!filteredMembers?.length}>
-            <Download className="mr-2 h-4 w-4" />
-            Export CSV
-          </Button>
+          <div className="flex items-center gap-2">
+            <MemberImport />
+            <Button variant="outline" onClick={handleExportCSV} disabled={!filteredMembers?.length}>
+              <Download className="mr-2 h-4 w-4" />
+              Export CSV
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
