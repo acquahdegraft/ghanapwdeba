@@ -35,3 +35,18 @@ verify_jwt = false
 # Admin-only function to import members with proper auth user creation
 # Manually verifies JWT and checks admin role
 verify_jwt = false
+
+[functions.process-payment]
+# Manually verifies JWT and user identity for payment processing
+# Uses Hubtel Mobile Money API for Ghana payments
+verify_jwt = false
+
+[functions.verify-payment]
+# Manually verifies JWT and user ownership of payment record
+# Checks payment status with Hubtel API
+verify_jwt = false
+
+[functions.hubtel-callback]
+# Webhook endpoint for Hubtel payment status callbacks
+# No JWT verification - validates via ClientReference matching
+verify_jwt = false

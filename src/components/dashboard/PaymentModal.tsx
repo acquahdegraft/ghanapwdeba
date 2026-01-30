@@ -103,6 +103,7 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
           phone,
           provider,
           payment_type: paymentType,
+          customer_name: user?.user_metadata?.full_name || "Member",
         },
       });
 
