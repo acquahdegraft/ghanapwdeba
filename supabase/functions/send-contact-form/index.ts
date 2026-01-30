@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
+import { checkRateLimit, createRateLimitResponse, getRateLimitHeaders } from "../_shared/rate-limit.ts";
 
 interface ContactFormRequest {
   firstName: string;
@@ -8,6 +9,38 @@ interface ContactFormRequest {
   phone?: string;
   subject: string;
   message: string;
+}
+
+// Rate limit config: 5 submissions per 15 minutes per IP
+const RATE_LIMIT_CONFIG = {
+  maxRequests: 5,
+  windowMs: 15 * 60 * 1000, // 15 minutes
+};
+
+/**
+ * Extract client IP from request headers
+ * Supports various proxy headers for accurate IP detection
+ */
+function getClientIP(req: Request): string {
+  // Check common proxy headers in order of reliability
+  const forwardedFor = req.headers.get("x-forwarded-for");
+  if (forwardedFor) {
+    // Take the first IP if there are multiple
+    return forwardedFor.split(",")[0].trim();
+  }
+  
+  const realIP = req.headers.get("x-real-ip");
+  if (realIP) {
+    return realIP.trim();
+  }
+  
+  const cfConnectingIP = req.headers.get("cf-connecting-ip");
+  if (cfConnectingIP) {
+    return cfConnectingIP.trim();
+  }
+  
+  // Fallback to a generic identifier if no IP headers are present
+  return "unknown-ip";
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -19,6 +52,16 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    // Apply rate limiting based on client IP
+    const clientIP = getClientIP(req);
+    const rateLimitKey = `contact-form:${clientIP}`;
+    const rateLimitResult = checkRateLimit(rateLimitKey, RATE_LIMIT_CONFIG);
+    
+    if (!rateLimitResult.allowed) {
+      console.log(`Rate limit exceeded for IP: ${clientIP}`);
+      return createRateLimitResponse(rateLimitResult, corsHeaders);
+    }
+
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
     if (!RESEND_API_KEY) {
       throw new Error("RESEND_API_KEY is not configured");
@@ -130,11 +173,14 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("Contact form email sent successfully:", emailData);
 
+    // Include rate limit headers in successful response
+    const rateLimitHeaders = getRateLimitHeaders(rateLimitResult);
+
     return new Response(
       JSON.stringify({ success: true, message: "Your message has been sent successfully!" }),
       {
         status: 200,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
+        headers: { "Content-Type": "application/json", ...corsHeaders, ...rateLimitHeaders },
       }
     );
   } catch (error: unknown) {
