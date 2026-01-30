@@ -9,7 +9,7 @@ const VERIFY_RATE_LIMIT: RateLimitConfig = {
   windowMs: 60 * 1000, // 1 minute
 };
 
-// Validate reference format (alphanumeric, reasonable length)
+// Validate reference format (alphanumeric with hyphens, reasonable length)
 function validateReference(reference: unknown): reference is string {
   return (
     typeof reference === "string" &&
@@ -38,10 +38,14 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const paystackSecretKey = Deno.env.get("PAYSTACK_SECRET_KEY");
+    
+    // Hubtel credentials for status check
+    const hubtelClientId = Deno.env.get("HUBTEL_CLIENT_ID");
+    const hubtelClientSecret = Deno.env.get("HUBTEL_CLIENT_SECRET");
+    const hubtelMerchantAccountNumber = Deno.env.get("HUBTEL_MERCHANT_ACCOUNT_NUMBER");
 
-    if (!paystackSecretKey) {
-      console.error("PAYSTACK_SECRET_KEY not configured");
+    if (!hubtelClientId || !hubtelClientSecret || !hubtelMerchantAccountNumber) {
+      console.error("Hubtel credentials not configured");
       return new Response(
         JSON.stringify({ error: "Payment service temporarily unavailable" }),
         { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -99,7 +103,7 @@ serve(async (req) => {
     // SECURITY: First verify the authenticated user owns this payment
     const { data: paymentRecord, error: paymentError } = await supabase
       .from("payments")
-      .select("user_id, status")
+      .select("user_id, status, amount")
       .eq("transaction_reference", reference)
       .single();
 
@@ -120,25 +124,14 @@ serve(async (req) => {
       );
     }
 
-    // Verify transaction with Paystack
-    const verifyResponse = await fetch(
-      `https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`,
-      {
-        headers: {
-          Authorization: `Bearer ${paystackSecretKey}`,
-        },
-      }
-    );
-
-    const verifyData = await verifyResponse.json();
-    console.log("Verification status:", verifyData.status);
-
-    if (!verifyData.status) {
-      console.error("Paystack verification failed:", JSON.stringify(verifyData));
+    // If already completed or failed, just return the current status
+    if (paymentRecord.status === "completed" || paymentRecord.status === "failed") {
       return new Response(
-        JSON.stringify({ 
-          error: "Unable to verify payment. Please try again.",
-          verified: false 
+        JSON.stringify({
+          verified: true,
+          status: paymentRecord.status,
+          amount: paymentRecord.amount,
+          reference: reference,
         }),
         { 
           status: 200, 
@@ -151,70 +144,109 @@ serve(async (req) => {
       );
     }
 
-    const transactionStatus = verifyData.data.status;
-    const paymentStatus = transactionStatus === "success" ? "completed" : 
-                          transactionStatus === "failed" ? "failed" : "pending";
+    // Check transaction status with Hubtel
+    const hubtelAuth = btoa(`${hubtelClientId}:${hubtelClientSecret}`);
+    
+    const verifyResponse = await fetch(
+      `https://api.hubtel.com/v1/merchantaccount/merchants/${hubtelMerchantAccountNumber}/transactions/status?clientReference=${encodeURIComponent(reference)}`,
+      {
+        headers: {
+          Authorization: `Basic ${hubtelAuth}`,
+        },
+      }
+    );
 
-    // Update payment record using admin client
-    const { error: updateError } = await supabaseAdmin
-      .from("payments")
-      .update({
-        status: paymentStatus,
-        payment_date: paymentStatus === "completed" ? new Date().toISOString() : null,
-        notes: `Payment ${paymentStatus}. Ref: ${reference}`,
-      })
-      .eq("transaction_reference", reference);
+    const verifyData = await verifyResponse.json();
+    console.log("Hubtel verification response:", JSON.stringify(verifyData));
 
-    if (updateError) {
-      console.error("Error updating payment:", updateError);
+    // Check if we got a valid response
+    if (verifyData.ResponseCode !== "0000") {
+      console.error("Hubtel verification failed:", JSON.stringify(verifyData));
+      return new Response(
+        JSON.stringify({ 
+          error: "Unable to verify payment status. Please try again.",
+          verified: false,
+          status: "pending"
+        }),
+        { 
+          status: 200, 
+          headers: { 
+            ...corsHeaders, 
+            ...getRateLimitHeaders(rateLimitResult),
+            "Content-Type": "application/json" 
+          } 
+        }
+      );
     }
 
-    // If payment successful, update membership status and send receipt
-    if (paymentStatus === "completed") {
-      // SECURITY: Use the verified user_id from our database, not from Paystack metadata
-      const verifiedUserId = paymentRecord.user_id;
-      
-      // Calculate new expiry date (1 year from now)
-      const newExpiryDate = new Date();
-      newExpiryDate.setFullYear(newExpiryDate.getFullYear() + 1);
+    // Map Hubtel status to our status
+    // Hubtel statuses: Success, Failed, Pending
+    const hubtelStatus = verifyData.Data?.Status?.toLowerCase() || "pending";
+    const paymentStatus = hubtelStatus === "success" ? "completed" : 
+                          hubtelStatus === "failed" ? "failed" : "pending";
 
-      const { error: profileError } = await supabaseAdmin
-        .from("profiles")
+    // Update payment record using admin client if status changed
+    if (paymentStatus !== paymentRecord.status) {
+      const { error: updateError } = await supabaseAdmin
+        .from("payments")
         .update({
-          membership_status: "active",
-          membership_start_date: new Date().toISOString().split("T")[0],
-          membership_expiry_date: newExpiryDate.toISOString().split("T")[0],
+          status: paymentStatus,
+          payment_date: paymentStatus === "completed" ? new Date().toISOString() : null,
+          notes: `Payment ${paymentStatus}. Hubtel Ref: ${verifyData.Data?.TransactionId || reference}`,
         })
-        .eq("user_id", verifiedUserId);
+        .eq("transaction_reference", reference);
 
-      if (profileError) {
-        console.error("Error updating profile:", profileError);
-      } else {
-        console.log(`Membership activated for user ${verifiedUserId} until ${newExpiryDate.toISOString().split("T")[0]}`);
+      if (updateError) {
+        console.error("Error updating payment:", updateError);
       }
 
-      // Get payment ID for sending receipt
-      const { data: payment } = await supabaseAdmin
-        .from("payments")
-        .select("id")
-        .eq("transaction_reference", reference)
-        .single();
+      // If payment successful, update membership status and send receipt
+      if (paymentStatus === "completed") {
+        // SECURITY: Use the verified user_id from our database, not from external source
+        const verifiedUserId = paymentRecord.user_id;
+        
+        // Calculate new expiry date (1 year from now)
+        const newExpiryDate = new Date();
+        newExpiryDate.setFullYear(newExpiryDate.getFullYear() + 1);
 
-      // Send payment receipt email (fire and forget)
-      if (payment?.id) {
-        try {
-          await fetch(`${supabaseUrl}/functions/v1/send-payment-receipt`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: authHeader,
-            },
-            body: JSON.stringify({ paymentId: payment.id }),
-          });
-          console.log("Receipt email request sent");
-        } catch (emailError) {
-          console.error("Failed to send receipt email:", emailError);
-          // Don't fail the request if email fails
+        const { error: profileError } = await supabaseAdmin
+          .from("profiles")
+          .update({
+            membership_status: "active",
+            membership_start_date: new Date().toISOString().split("T")[0],
+            membership_expiry_date: newExpiryDate.toISOString().split("T")[0],
+          })
+          .eq("user_id", verifiedUserId);
+
+        if (profileError) {
+          console.error("Error updating profile:", profileError);
+        } else {
+          console.log(`Membership activated for user ${verifiedUserId} until ${newExpiryDate.toISOString().split("T")[0]}`);
+        }
+
+        // Get payment ID for sending receipt
+        const { data: payment } = await supabaseAdmin
+          .from("payments")
+          .select("id")
+          .eq("transaction_reference", reference)
+          .single();
+
+        // Send payment receipt email (fire and forget)
+        if (payment?.id) {
+          try {
+            await fetch(`${supabaseUrl}/functions/v1/send-payment-receipt`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: authHeader,
+              },
+              body: JSON.stringify({ paymentId: payment.id }),
+            });
+            console.log("Receipt email request sent");
+          } catch (emailError) {
+            console.error("Failed to send receipt email:", emailError);
+            // Don't fail the request if email fails
+          }
         }
       }
     }
@@ -223,8 +255,9 @@ serve(async (req) => {
       JSON.stringify({
         verified: true,
         status: paymentStatus,
-        amount: verifyData.data.amount / 100,
-        reference: verifyData.data.reference,
+        amount: paymentRecord.amount,
+        reference: reference,
+        hubtel_transaction_id: verifyData.Data?.TransactionId,
       }),
       { 
         status: 200, 

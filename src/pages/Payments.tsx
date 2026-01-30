@@ -85,7 +85,7 @@ export default function Payments() {
           paidDate={lastPayment?.payment_date ? format(parseISO(lastPayment.payment_date), "MMM d, yyyy") : undefined}
         />
 
-        {/* Upcoming Payment */}
+        {/* Payment Methods */}
         <div className="rounded-xl border bg-card p-6">
           <h3 className="mb-4 font-semibold">Payment Methods</h3>
           <div className="space-y-3">
@@ -95,7 +95,7 @@ export default function Payments() {
               </div>
               <div className="flex-1">
                 <p className="text-sm font-medium">MTN Mobile Money</p>
-                <p className="text-xs text-muted-foreground">Recommended</p>
+                <p className="text-xs text-muted-foreground">Powered by Hubtel</p>
               </div>
               <span className="rounded-full bg-success/10 px-2 py-0.5 text-xs font-medium text-success">
                 Available
@@ -107,12 +107,24 @@ export default function Payments() {
               </div>
               <div className="flex-1">
                 <p className="text-sm font-medium">Vodafone Cash</p>
-                <p className="text-xs text-muted-foreground">Coming soon</p>
+                <p className="text-xs text-muted-foreground">Powered by Hubtel</p>
               </div>
+              <span className="rounded-full bg-success/10 px-2 py-0.5 text-xs font-medium text-success">
+                Available
+              </span>
             </div>
-            <button className="w-full rounded-lg border border-dashed border-muted-foreground/30 py-3 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary">
-              + Add Payment Method
-            </button>
+            <div className="flex items-center gap-3 rounded-lg border p-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/10">
+                <span className="text-lg font-bold text-blue-500">A</span>
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium">AirtelTigo Money</p>
+                <p className="text-xs text-muted-foreground">Powered by Hubtel</p>
+              </div>
+              <span className="rounded-full bg-success/10 px-2 py-0.5 text-xs font-medium text-success">
+                Available
+              </span>
+            </div>
           </div>
         </div>
 
