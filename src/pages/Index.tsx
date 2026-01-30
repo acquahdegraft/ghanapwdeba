@@ -1,6 +1,11 @@
+import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, Users, Shield, Calendar, FileText, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { LandingHeader } from "@/components/landing/LandingHeader";
+import { LandingFooter } from "@/components/landing/LandingFooter";
+
+const SITE_NAME = "Ghana Persons with Disability Entrepreneurs and Business Association";
 
 const features = [
   {
@@ -26,46 +31,13 @@ const features = [
 ];
 
 const Index = () => {
+  useEffect(() => {
+    document.title = SITE_NAME;
+  }, []);
+
   return (
     <div className="min-h-screen">
-      {/* Navigation */}
-      <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
-              <span className="text-lg font-bold text-primary-foreground">G</span>
-            </div>
-            <span className="hidden font-bold sm:inline">GPWDEBA</span>
-          </div>
-
-          <nav className="hidden items-center gap-6 md:flex">
-            <Link to="/about" className="text-sm font-medium text-muted-foreground hover:text-foreground">
-              About
-            </Link>
-            <Link to="/membership" className="text-sm font-medium text-muted-foreground hover:text-foreground">
-              Membership
-            </Link>
-            <Link to="/events" className="text-sm font-medium text-muted-foreground hover:text-foreground">
-              Events
-            </Link>
-            <Link to="/resources" className="text-sm font-medium text-muted-foreground hover:text-foreground">
-              Resources
-            </Link>
-            <Link to="/contact" className="text-sm font-medium text-muted-foreground hover:text-foreground">
-              Contact
-            </Link>
-          </nav>
-
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" asChild>
-              <Link to="/login">Sign In</Link>
-            </Button>
-            <Button asChild className="gradient-primary">
-              <Link to="/register">Join Now</Link>
-            </Button>
-          </div>
-        </div>
-      </header>
+      <LandingHeader />
 
       {/* Hero Section */}
       <section className="relative gradient-hero overflow-hidden py-20 md:py-32">
@@ -170,33 +142,7 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t py-12">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col items-center justify-between gap-6 md:flex-row">
-            <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-                <span className="text-sm font-bold text-primary-foreground">G</span>
-              </div>
-              <div>
-                <p className="text-sm font-semibold">GPWDEBA</p>
-                <p className="text-xs text-muted-foreground">
-                  Ghana PWDs Entrepreneurs & Business Association
-                </p>
-              </div>
-            </div>
-            <nav className="flex flex-wrap justify-center gap-6 text-sm text-muted-foreground">
-              <Link to="/about" className="hover:text-foreground">About</Link>
-              <Link to="/contact" className="hover:text-foreground">Contact</Link>
-              <Link to="/privacy" className="hover:text-foreground">Privacy</Link>
-              <Link to="/terms" className="hover:text-foreground">Terms</Link>
-            </nav>
-            <p className="text-sm text-muted-foreground">
-              © 2025 GPWDEBA. All rights reserved.
-            </p>
-          </div>
-        </div>
-      </footer>
+      <LandingFooter />
     </div>
   );
 };

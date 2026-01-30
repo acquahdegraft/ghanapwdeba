@@ -1,8 +1,11 @@
+import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { LandingHeader } from "@/components/landing/LandingHeader";
 import { LandingFooter } from "@/components/landing/LandingFooter";
 import { Button } from "@/components/ui/button";
 import { Calendar, MapPin, Users, ArrowRight } from "lucide-react";
+
+const SITE_NAME = "Ghana Persons with Disability Entrepreneurs and Business Association";
 
 const upcomingEvents = [
   {
@@ -50,6 +53,10 @@ const pastHighlights = [
 ];
 
 export default function PublicEvents() {
+  useEffect(() => {
+    document.title = `Events | ${SITE_NAME}`;
+  }, []);
+
   return (
     <div className="min-h-screen flex flex-col">
       <LandingHeader />

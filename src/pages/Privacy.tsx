@@ -1,7 +1,14 @@
+import { useEffect } from "react";
 import { LandingHeader } from "@/components/landing/LandingHeader";
 import { LandingFooter } from "@/components/landing/LandingFooter";
 
+const SITE_NAME = "Ghana Persons with Disability Entrepreneurs and Business Association";
+
 export default function Privacy() {
+  useEffect(() => {
+    document.title = `Privacy Policy | ${SITE_NAME}`;
+  }, []);
+
   return (
     <div className="min-h-screen flex flex-col">
       <LandingHeader />

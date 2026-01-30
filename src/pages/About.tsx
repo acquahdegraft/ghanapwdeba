@@ -1,6 +1,9 @@
+import { useEffect } from "react";
 import { LandingHeader } from "@/components/landing/LandingHeader";
 import { LandingFooter } from "@/components/landing/LandingFooter";
 import { Users, Target, Eye, Heart } from "lucide-react";
+
+const SITE_NAME = "Ghana Persons with Disability Entrepreneurs and Business Association";
 
 const values = [
   {
@@ -26,6 +29,10 @@ const values = [
 ];
 
 export default function About() {
+  useEffect(() => {
+    document.title = `About | ${SITE_NAME}`;
+  }, []);
+
   return (
     <div className="min-h-screen flex flex-col">
       <LandingHeader />
