@@ -1,8 +1,11 @@
+import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { LandingHeader } from "@/components/landing/LandingHeader";
 import { LandingFooter } from "@/components/landing/LandingFooter";
 import { Button } from "@/components/ui/button";
 import { Check, ArrowRight } from "lucide-react";
+
+const SITE_NAME = "Ghana Persons with Disability Entrepreneurs and Business Association";
 
 const membershipBenefits = [
   "Access to exclusive networking events and workshops",
@@ -57,6 +60,10 @@ const membershipTypes = [
 ];
 
 export default function Membership() {
+  useEffect(() => {
+    document.title = `Membership | ${SITE_NAME}`;
+  }, []);
+
   return (
     <div className="min-h-screen flex flex-col">
       <LandingHeader />
