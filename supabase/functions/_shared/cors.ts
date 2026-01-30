@@ -15,6 +15,9 @@ const ALLOWED_ORIGINS = [
 // Pattern for dynamic Lovable preview URLs
 const LOVABLE_PREVIEW_PATTERN = /^https:\/\/[a-z0-9-]+--[a-f0-9-]+\.lovable\.app$/;
 
+// Pattern for legacy Lovable preview URLs (e.g. https://<uuid>.lovableproject.com)
+const LOVABLEPROJECT_PREVIEW_PATTERN = /^https:\/\/[a-z0-9-]+\.lovableproject\.com$/;
+
 /**
  * Check if an origin is allowed
  */
@@ -28,6 +31,11 @@ export function isAllowedOrigin(origin: string | null): boolean {
   
   // Check dynamic Lovable preview pattern
   if (LOVABLE_PREVIEW_PATTERN.test(origin)) {
+    return true;
+  }
+
+  // Check legacy preview pattern
+  if (LOVABLEPROJECT_PREVIEW_PATTERN.test(origin)) {
     return true;
   }
   
