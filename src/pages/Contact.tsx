@@ -15,12 +15,12 @@ const contactInfo = [
   {
     icon: MapPin,
     title: "Address",
-    details: ["P.O. Box GP 1234", "Accra, Ghana"],
+    details: ["Care of Dobro African Cola", "Afri City, Nama, Kobe", "Digital Address: EG-158-4805", "HNO-DB*T-123D/5"],
   },
   {
     icon: Phone,
     title: "Phone",
-    details: ["+233 XX XXX XXXX", "+233 XX XXX XXXX"],
+    details: ["+233 20 119 5588"],
   },
   {
     icon: Mail,
