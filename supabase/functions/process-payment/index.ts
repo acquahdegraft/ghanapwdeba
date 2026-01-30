@@ -204,8 +204,27 @@ serve(async (req) => {
       }
     );
 
-    const hubtelData = await hubtelResponse.json();
-    console.log("Hubtel response:", JSON.stringify(hubtelData));
+    // Get raw response text first to debug HTML errors
+    const hubtelResponseText = await hubtelResponse.text();
+    console.log("Hubtel raw response status:", hubtelResponse.status);
+    console.log("Hubtel raw response:", hubtelResponseText.substring(0, 500));
+
+    // Try to parse as JSON
+    let hubtelData;
+    try {
+      hubtelData = JSON.parse(hubtelResponseText);
+    } catch (parseError) {
+      console.error("Hubtel returned non-JSON response:", hubtelResponseText.substring(0, 1000));
+      return new Response(
+        JSON.stringify({ 
+          error: "Payment provider returned an invalid response. Please verify your Hubtel credentials and merchant account.",
+          debug: `Status: ${hubtelResponse.status}, Response preview: ${hubtelResponseText.substring(0, 200)}`
+        }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    console.log("Hubtel parsed response:", JSON.stringify(hubtelData));
 
     // Check if Hubtel returned success
     // Hubtel uses ResponseCode "0000" for success
