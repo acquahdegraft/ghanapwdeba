@@ -156,7 +156,7 @@ const handler = async (req: Request): Promise<Response> => {
         Authorization: `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: "GPWDEBA Contact Form <noreply@mail.gpwdeba.org>",
+        from: "GPWDEBA Contact Form <noreply@gpwdeba.org>",
         to: ["info@gpwdeba.org"],
         reply_to: email,
         subject: `Contact Form: ${safeSubject}`,
