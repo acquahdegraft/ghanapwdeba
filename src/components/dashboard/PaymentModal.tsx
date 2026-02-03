@@ -57,12 +57,44 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
     const script = document.createElement('script');
     script.src = 'https://unified-pay.hubtel.com/js/v1/checkout.js';
     script.async = true;
+    script.id = 'hubtel-checkout-script';
+    
+    script.onload = () => {
+      console.log('Hubtel SDK script loaded');
+    };
+    
+    script.onerror = () => {
+      console.error('Failed to load Hubtel SDK script');
+    };
+    
     document.body.appendChild(script);
 
     return () => {
       // Don't remove script on cleanup - keep it loaded
     };
   }, []);
+
+  // Wait for Hubtel SDK to be available
+  const waitForHubtelSdk = (): Promise<new () => HubtelCheckout> => {
+    return new Promise((resolve, reject) => {
+      let attempts = 0;
+      const maxAttempts = 50; // 5 seconds max wait
+      
+      const check = () => {
+        const sdk = (window as unknown as { CheckoutSdk?: new () => HubtelCheckout }).CheckoutSdk;
+        if (sdk) {
+          resolve(sdk);
+        } else if (attempts >= maxAttempts) {
+          reject(new Error('Payment system failed to load. Please refresh the page.'));
+        } else {
+          attempts++;
+          setTimeout(check, 100);
+        }
+      };
+      
+      check();
+    });
+  };
 
   const handleInitiatePayment = async () => {
     if (!session?.access_token) {
@@ -95,11 +127,8 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
         formattedPhone = "233" + formattedPhone.substring(1);
       }
 
-      // Check if Hubtel SDK is loaded
-      const CheckoutSdk = (window as unknown as { CheckoutSdk?: new () => HubtelCheckout }).CheckoutSdk;
-      if (!CheckoutSdk) {
-        throw new Error("Payment system is loading. Please try again in a moment.");
-      }
+      // Wait for Hubtel SDK to be available
+      const CheckoutSdk = await waitForHubtelSdk();
 
       // Get the callback URL for Hubtel webhook
       const callbackUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/hubtel-callback`;
