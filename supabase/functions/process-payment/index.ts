@@ -9,21 +9,12 @@ const PAYMENT_RATE_LIMIT: RateLimitConfig = {
   windowMs: 60 * 60 * 1000, // 1 hour
 };
 
-// Hubtel channel mappings for Ghana mobile money
-const HUBTEL_CHANNELS: Record<string, string> = {
-  mtn: "mtn-gh",
-  vodafone: "vodafone-gh",
-  airteltigo: "tigo-gh",
-};
-
-const VALID_PROVIDERS = ["mtn", "vodafone", "airteltigo"] as const;
-type Provider = typeof VALID_PROVIDERS[number];
-
-const GHANA_PHONE_REGEX = /^(\+233|0)?[0-9]{9}$/;
+// Hubtel Online Checkout URL
+const HUBTEL_CHECKOUT_URL = "https://payproxyapi.hubtel.com/items/initiate";
 
 function validatePaymentRequest(data: unknown): { 
   valid: true; 
-  data: { amount: number; email: string; phone: string; provider: Provider; payment_type: string; customer_name: string } 
+  data: { amount: number; email: string; phone: string; payment_type: string; customer_name: string; return_url: string } 
 } | { 
   valid: false; 
   error: string 
@@ -32,7 +23,7 @@ function validatePaymentRequest(data: unknown): {
     return { valid: false, error: "Invalid request body" };
   }
 
-  const { amount, email, phone, provider, payment_type, customer_name } = data as Record<string, unknown>;
+  const { amount, email, phone, payment_type, customer_name, return_url } = data as Record<string, unknown>;
 
   // Validate amount
   if (typeof amount !== 'number' || amount <= 0 || amount > 100000) {
@@ -44,15 +35,8 @@ function validatePaymentRequest(data: unknown): {
     return { valid: false, error: "Invalid email address" };
   }
 
-  // Validate phone
-  if (typeof phone !== 'string' || !GHANA_PHONE_REGEX.test(phone.replace(/\s/g, ""))) {
-    return { valid: false, error: "Invalid Ghana phone number format" };
-  }
-
-  // Validate provider
-  if (!VALID_PROVIDERS.includes(provider as Provider)) {
-    return { valid: false, error: "Invalid provider. Must be mtn, vodafone, or airteltigo" };
-  }
+  // Validate phone (optional for online checkout)
+  const validPhone = typeof phone === 'string' && phone.length >= 9 ? phone : "";
 
   // Validate payment_type
   const validPaymentType = typeof payment_type === 'string' && payment_type.length > 0 && payment_type.length <= 100
@@ -64,15 +48,20 @@ function validatePaymentRequest(data: unknown): {
     ? customer_name
     : "Member";
 
+  // Validate return_url
+  if (typeof return_url !== 'string' || !return_url.startsWith('http')) {
+    return { valid: false, error: "Invalid return URL" };
+  }
+
   return {
     valid: true,
     data: {
       amount: amount as number,
       email: email as string,
-      phone: phone as string,
-      provider: provider as Provider,
+      phone: validPhone,
       payment_type: validPaymentType,
       customer_name: validCustomerName,
+      return_url: return_url as string,
     },
   };
 }
@@ -165,44 +154,44 @@ serve(async (req) => {
       );
     }
 
-    const { amount, email, phone, provider, payment_type, customer_name } = validation.data;
-
-    // Format phone for Ghana (remove leading 0, add country code)
-    let formattedPhone = phone.replace(/\s/g, "").replace(/^\+233/, "").replace(/^0/, "");
-    formattedPhone = `233${formattedPhone}`;
+    const { amount, email, phone, payment_type, customer_name, return_url } = validation.data;
 
     // Generate unique client reference
     const clientReference = generateClientReference();
 
-    console.log(`Processing Hubtel ${provider} payment for user ${userId}: GHS ${amount}`);
-
-    // Build Hubtel Basic Auth header
-    const hubtelAuth = btoa(`${hubtelClientId}:${hubtelClientSecret}`);
-    
     // Get callback URL (use the Supabase function URL)
     const callbackUrl = `${supabaseUrl}/functions/v1/hubtel-callback`;
 
-    // Initialize Hubtel receive money request
-    const hubtelResponse = await fetch(
-      `https://api.hubtel.com/v1/merchantaccount/merchants/${hubtelMerchantAccountNumber}/receive/mobilemoney`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Basic ${hubtelAuth}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          CustomerName: customer_name,
-          CustomerMsisdn: formattedPhone,
-          CustomerEmail: email,
-          Channel: HUBTEL_CHANNELS[provider],
-          Amount: amount,
-          PrimaryCallbackUrl: callbackUrl,
-          Description: `Membership dues payment - ${payment_type}`,
-          ClientReference: clientReference,
-        }),
-      }
-    );
+    console.log(`Creating Hubtel Online Checkout for user ${userId}: GHS ${amount}`);
+
+    // Build Hubtel Basic Auth header
+    const hubtelAuth = btoa(`${hubtelClientId}:${hubtelClientSecret}`);
+
+    // Create Hubtel Online Checkout request
+    const hubtelPayload = {
+      merchantAccountNumber: hubtelMerchantAccountNumber,
+      totalAmount: amount,
+      title: "GPWDEBA Membership Dues",
+      description: `Membership dues payment - ${payment_type}`,
+      callbackUrl: callbackUrl,
+      returnUrl: return_url,
+      cancellationUrl: return_url.replace("success", "cancelled"),
+      payeeName: customer_name,
+      payeeEmail: email,
+      payeeMobileNumber: phone.replace(/\s/g, "").replace(/^\+233/, "0").replace(/^233/, "0"),
+      clientReference: clientReference,
+    };
+
+    console.log("Hubtel payload:", JSON.stringify(hubtelPayload));
+
+    const hubtelResponse = await fetch(HUBTEL_CHECKOUT_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${hubtelAuth}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(hubtelPayload),
+    });
 
     // Get raw response text first to debug HTML errors
     const hubtelResponseText = await hubtelResponse.text();
@@ -217,8 +206,8 @@ serve(async (req) => {
       console.error("Hubtel returned non-JSON response:", hubtelResponseText.substring(0, 1000));
       return new Response(
         JSON.stringify({ 
-          error: "Payment provider returned an invalid response. Please verify your Hubtel credentials and merchant account.",
-          debug: `Status: ${hubtelResponse.status}, Response preview: ${hubtelResponseText.substring(0, 200)}`
+          error: "Payment provider returned an invalid response. Please try again later.",
+          debug: `Status: ${hubtelResponse.status}`
         }),
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
@@ -227,13 +216,23 @@ serve(async (req) => {
     console.log("Hubtel parsed response:", JSON.stringify(hubtelData));
 
     // Check if Hubtel returned success
-    // Hubtel uses ResponseCode "0000" for success
-    if (hubtelData.ResponseCode !== "0000") {
+    // Hubtel uses responseCode "0000" for success
+    if (hubtelData.responseCode !== "0000") {
       console.error("Hubtel error:", JSON.stringify(hubtelData));
-      const errorMessage = hubtelData.Data?.Description || hubtelData.Message || "Unable to process payment";
+      const errorMessage = hubtelData.message || hubtelData.data?.description || "Unable to create checkout";
       return new Response(
         JSON.stringify({ error: errorMessage }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Get checkout URL from response
+    const checkoutUrl = hubtelData.data?.checkoutUrl;
+    if (!checkoutUrl) {
+      console.error("No checkout URL in response:", JSON.stringify(hubtelData));
+      return new Response(
+        JSON.stringify({ error: "Failed to get checkout URL from payment provider" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -244,10 +243,10 @@ serve(async (req) => {
         user_id: userId,
         amount,
         payment_type,
-        payment_method: `${provider}_mobile_money`,
+        payment_method: "hubtel_checkout",
         transaction_reference: clientReference,
         status: "pending",
-        notes: `Hubtel Mobile Money payment via ${provider.toUpperCase()}`,
+        notes: "Hubtel Online Checkout payment",
       })
       .select()
       .single();
@@ -264,9 +263,7 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         reference: clientReference,
-        hubtel_transaction_id: hubtelData.Data?.TransactionId,
-        status: "pending",
-        display_text: hubtelData.Data?.Description || "Please authorize the payment on your phone",
+        checkout_url: checkoutUrl,
         payment_id: paymentRecord.id,
       }),
       { 

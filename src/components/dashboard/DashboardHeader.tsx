@@ -39,7 +39,6 @@ export function DashboardHeader() {
           {/* Quick action */}
           <Button 
             size="sm" 
-            className="hidden sm:inline-flex"
             onClick={() => setPaymentModalOpen(true)}
           >
             Pay Dues
