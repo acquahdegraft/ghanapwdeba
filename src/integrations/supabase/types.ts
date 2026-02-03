@@ -195,6 +195,7 @@ export type Database = {
           transaction_reference: string | null
           updated_at: string
           user_id: string
+          webhook_token: string | null
         }
         Insert: {
           amount: number
@@ -209,6 +210,7 @@ export type Database = {
           transaction_reference?: string | null
           updated_at?: string
           user_id: string
+          webhook_token?: string | null
         }
         Update: {
           amount?: number
@@ -223,6 +225,7 @@ export type Database = {
           transaction_reference?: string | null
           updated_at?: string
           user_id?: string
+          webhook_token?: string | null
         }
         Relationships: []
       }
