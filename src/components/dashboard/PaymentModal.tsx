@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
+import CheckoutSdk from "@hubteljs/checkout";
 
 interface PaymentModalProps {
   open: boolean;
@@ -47,55 +48,6 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
     }
   }, [open]);
 
-  // Load Hubtel Checkout SDK
-  useEffect(() => {
-    // Check if script already loaded
-    if (document.querySelector('script[src*="unified-pay.hubtel.com"]')) {
-      return;
-    }
-    
-    const script = document.createElement('script');
-    script.src = 'https://unified-pay.hubtel.com/js/v1/checkout.js';
-    script.async = true;
-    script.id = 'hubtel-checkout-script';
-    
-    script.onload = () => {
-      console.log('Hubtel SDK script loaded');
-    };
-    
-    script.onerror = () => {
-      console.error('Failed to load Hubtel SDK script');
-    };
-    
-    document.body.appendChild(script);
-
-    return () => {
-      // Don't remove script on cleanup - keep it loaded
-    };
-  }, []);
-
-  // Wait for Hubtel SDK to be available
-  const waitForHubtelSdk = (): Promise<new () => HubtelCheckout> => {
-    return new Promise((resolve, reject) => {
-      let attempts = 0;
-      const maxAttempts = 50; // 5 seconds max wait
-      
-      const check = () => {
-        const sdk = (window as unknown as { CheckoutSdk?: new () => HubtelCheckout }).CheckoutSdk;
-        if (sdk) {
-          resolve(sdk);
-        } else if (attempts >= maxAttempts) {
-          reject(new Error('Payment system failed to load. Please refresh the page.'));
-        } else {
-          attempts++;
-          setTimeout(check, 100);
-        }
-      };
-      
-      check();
-    });
-  };
-
   const handleInitiatePayment = async () => {
     if (!session?.access_token) {
       toast.error("Please log in to make a payment");
@@ -127,9 +79,6 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
         formattedPhone = "233" + formattedPhone.substring(1);
       }
 
-      // Wait for Hubtel SDK to be available
-      const CheckoutSdk = await waitForHubtelSdk();
-
       // Fetch Hubtel config from edge function (keeps credentials secure)
       const { data: hubtelConfig, error: configError } = await supabase.functions.invoke("get-hubtel-config");
       
@@ -141,7 +90,7 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
         throw new Error("Payment service is temporarily unavailable.");
       }
 
-      // Initialize checkout
+      // Initialize checkout using the npm package
       const checkout = new CheckoutSdk();
 
       const purchaseInfo = {
