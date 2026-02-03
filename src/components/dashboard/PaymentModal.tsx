@@ -22,6 +22,13 @@ type PaymentStep = "input" | "processing" | "success" | "failed";
 const MIN_PAYMENT_INTERVAL = 60000; // 1 minute between payment attempts
 let lastPaymentTime = 0;
 
+// Generate a unique client reference
+function generateClientReference(): string {
+  const timestamp = Date.now().toString(36);
+  const randomPart = Math.random().toString(36).substring(2, 10);
+  return `GPAD-${timestamp}-${randomPart}`.toUpperCase();
+}
+
 export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "membership_dues" }: PaymentModalProps) {
   const [step, setStep] = useState<PaymentStep>("input");
   const [phone, setPhone] = useState("");
@@ -39,6 +46,23 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
       }, 300);
     }
   }, [open]);
+
+  // Load Hubtel Checkout SDK
+  useEffect(() => {
+    // Check if script already loaded
+    if (document.querySelector('script[src*="unified-pay.hubtel.com"]')) {
+      return;
+    }
+    
+    const script = document.createElement('script');
+    script.src = 'https://unified-pay.hubtel.com/js/v1/checkout.js';
+    script.async = true;
+    document.body.appendChild(script);
+
+    return () => {
+      // Don't remove script on cleanup - keep it loaded
+    };
+  }, []);
 
   const handleInitiatePayment = async () => {
     if (!session?.access_token) {
@@ -58,46 +82,108 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
     setStep("processing");
 
     try {
+      const clientReference = generateClientReference();
+      setReference(clientReference);
+
       // Format phone number for Ghana
       let formattedPhone = phone.replace(/\s/g, "").replace(/^\+233/, "0").replace(/^233/, "0");
       if (formattedPhone && !formattedPhone.startsWith("0")) {
         formattedPhone = "0" + formattedPhone;
       }
+      // Convert to international format for Hubtel
+      if (formattedPhone.startsWith("0")) {
+        formattedPhone = "233" + formattedPhone.substring(1);
+      }
 
-      // Build return URL for callback
-      const returnUrl = `${window.location.origin}/dashboard/payment-callback?status=success`;
+      // Check if Hubtel SDK is loaded
+      const CheckoutSdk = (window as unknown as { CheckoutSdk?: new () => HubtelCheckout }).CheckoutSdk;
+      if (!CheckoutSdk) {
+        throw new Error("Payment system is loading. Please try again in a moment.");
+      }
 
-      // Call the process-payment edge function (server-side Hubtel API)
-      const { data, error } = await supabase.functions.invoke("process-payment", {
+      // Get the callback URL for Hubtel webhook
+      const callbackUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/hubtel-callback`;
+
+      // Initialize checkout
+      const checkout = new CheckoutSdk();
+
+      const purchaseInfo = {
+        amount: amount,
+        purchaseDescription: `GPWDEBA Membership Dues - ${paymentType}`,
+        customerPhoneNumber: formattedPhone || "233000000000",
+        clientReference: clientReference,
+      };
+
+      // Get Hubtel credentials from environment
+      const merchantAccount = import.meta.env.VITE_HUBTEL_MERCHANT_ACCOUNT;
+      const basicAuth = import.meta.env.VITE_HUBTEL_BASIC_AUTH;
+
+      if (!merchantAccount || !basicAuth) {
+        throw new Error("Payment configuration is missing. Please contact support.");
+      }
+
+      const config = {
+        branding: "enabled" as const,
+        callbackUrl: callbackUrl,
+        merchantAccount: parseInt(merchantAccount),
+        basicAuth: basicAuth,
+        integrationType: "External" as const,
+      };
+
+      // First, create a pending payment record
+      const { error: insertError } = await supabase.functions.invoke("create-pending-payment", {
         body: {
           amount,
-          email: session.user.email,
-          phone: formattedPhone,
           payment_type: paymentType,
-          customer_name: session.user.user_metadata?.full_name || "Member",
-          return_url: returnUrl,
+          reference: clientReference,
         },
       });
 
-      if (error) {
-        throw new Error(error.message || "Payment initiation failed");
+      if (insertError) {
+        console.warn("Could not create pending payment record:", insertError);
+        // Continue anyway - the callback will handle it
       }
 
-      if (!data?.success || !data?.checkout_url) {
-        throw new Error(data?.error || "Failed to create checkout session");
-      }
+      // Open the Hubtel checkout modal
+      checkout.openModal({
+        purchaseInfo,
+        config,
+        callBacks: {
+          onInit: () => {
+            console.log("Hubtel checkout initialized");
+          },
+          onPaymentSuccess: async () => {
+            console.log("Payment succeeded");
+            checkout.closePopUp();
+            setStep("success");
+            // Refresh data
+            queryClient.invalidateQueries({ queryKey: ["payments"] });
+            queryClient.invalidateQueries({ queryKey: ["profile"] });
+            toast.success("Payment successful! Your membership is now active.");
+          },
+          onPaymentFailure: () => {
+            console.log("Payment failed");
+            checkout.closePopUp();
+            setStep("failed");
+            toast.error("Payment failed. Please try again.");
+          },
+          onLoad: () => {
+            console.log("Hubtel checkout loaded");
+            setStep("input"); // Reset to input since modal is now handling it
+          },
+          onClose: () => {
+            console.log("Hubtel checkout closed");
+            if (step === "processing") {
+              setStep("input");
+            }
+          },
+        },
+      });
 
-      setReference(data.reference);
-      
-      toast.success("Redirecting to payment page...");
-      
-      // Redirect to Hubtel checkout
-      window.location.href = data.checkout_url;
-
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Payment error:", error);
-      toast.error(error.message || "Failed to initiate payment");
-      setStep("failed");
+      toast.error(error instanceof Error ? error.message : "Failed to initiate payment");
+      setStep("input");
     }
   };
 
@@ -114,7 +200,7 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
         <DialogHeader>
           <DialogTitle>
             {step === "input" && "Pay Membership Dues"}
-            {step === "processing" && "Processing Payment"}
+            {step === "processing" && "Opening Payment"}
             {step === "success" && "Payment Successful"}
             {step === "failed" && "Payment Failed"}
           </DialogTitle>
@@ -132,9 +218,9 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
               <p className="text-xs text-muted-foreground mt-1">Annual Membership Dues</p>
             </div>
 
-            {/* Phone Input */}
+            {/* Phone Input (Optional) */}
             <div className="space-y-2">
-              <Label htmlFor="phone">Phone Number</Label>
+              <Label htmlFor="phone">Phone Number (Optional)</Label>
               <div className="relative">
                 <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
@@ -147,7 +233,7 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
                 />
               </div>
               <p className="text-xs text-muted-foreground">
-                Enter your mobile money number for faster checkout
+                Pre-fill your mobile money number for faster checkout
               </p>
             </div>
 
@@ -185,8 +271,8 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
           <div className="py-8 text-center space-y-4">
             <Loader2 className="h-12 w-12 animate-spin mx-auto text-primary" />
             <div>
-              <p className="font-medium">Creating payment session...</p>
-              <p className="text-sm text-muted-foreground">You'll be redirected to complete payment</p>
+              <p className="font-medium">Opening payment window...</p>
+              <p className="text-sm text-muted-foreground">Please complete your payment in the popup</p>
             </div>
           </div>
         )}
@@ -218,7 +304,7 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
             </div>
             <div>
               <p className="font-semibold text-lg">Payment Failed</p>
-              <p className="text-muted-foreground">Please try again or contact support</p>
+              <p className="text-muted-foreground">Please try again or use a different payment method</p>
             </div>
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
@@ -233,4 +319,31 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
       </DialogContent>
     </Dialog>
   );
+}
+
+// Type definitions for Hubtel SDK
+interface HubtelCheckout {
+  openModal: (options: {
+    purchaseInfo: {
+      amount: number;
+      purchaseDescription: string;
+      customerPhoneNumber: string;
+      clientReference: string;
+    };
+    config: {
+      branding: "enabled" | "disabled";
+      callbackUrl: string;
+      merchantAccount: number;
+      basicAuth: string;
+      integrationType: "External" | "Internal";
+    };
+    callBacks: {
+      onInit?: () => void;
+      onPaymentSuccess?: () => void;
+      onPaymentFailure?: () => void;
+      onLoad?: () => void;
+      onClose?: () => void;
+    };
+  }) => void;
+  closePopUp: () => void;
 }
