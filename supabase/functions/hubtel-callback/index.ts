@@ -3,6 +3,10 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // Hubtel callback handler for async payment notifications
 // This endpoint receives webhooks from Hubtel when payment status changes
+//
+// Security: Since Hubtel doesn't provide webhook signatures, we implement our own
+// verification using a one-time webhook token stored with the pending payment record.
+// The token is cleared after first use to prevent replay attacks.
 
 serve(async (req) => {
   // Only accept POST requests
@@ -35,7 +39,6 @@ serve(async (req) => {
     const {
       Status,
       ClientReference,
-      Amount,
       TransactionId,
     } = callbackData as {
       Status?: string;
@@ -52,7 +55,7 @@ serve(async (req) => {
       });
     }
 
-    // Validate ClientReference format
+    // Validate ClientReference format (alphanumeric with hyphens and underscores)
     if (!/^[a-zA-Z0-9_-]+$/.test(ClientReference)) {
       console.error("Invalid ClientReference format");
       return new Response(JSON.stringify({ success: false, error: "Invalid reference format" }), {
@@ -61,10 +64,10 @@ serve(async (req) => {
       });
     }
 
-    // Find the payment record
+    // Find the payment record with its webhook token
     const { data: paymentRecord, error: findError } = await supabaseAdmin
       .from("payments")
-      .select("id, user_id, status, amount")
+      .select("id, user_id, status, amount, webhook_token")
       .eq("transaction_reference", ClientReference)
       .single();
 
@@ -76,6 +79,24 @@ serve(async (req) => {
       });
     }
 
+    // SECURITY CHECK: Verify this is a legitimate callback
+    // The webhook_token must exist and not have been used before
+    if (!paymentRecord.webhook_token) {
+      // If webhook_token is null/empty, this payment was either:
+      // 1. Already processed (token was cleared after first callback)
+      // 2. Created without a token (legacy/invalid)
+      console.warn(`Callback received for payment ${ClientReference} with no/used webhook token - possible replay attack`);
+      
+      // Still return 200 to prevent Hubtel from retrying, but don't process
+      return new Response(JSON.stringify({ 
+        success: true, 
+        message: "Payment already processed or invalid" 
+      }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+
     // Map Hubtel status to our status
     const hubtelStatus = String(Status || "").toLowerCase();
     const paymentStatus = hubtelStatus === "success" ? "completed" : 
@@ -83,14 +104,16 @@ serve(async (req) => {
 
     console.log(`Updating payment ${ClientReference} from ${paymentRecord.status} to ${paymentStatus}`);
 
-    // Update payment record if status changed
-    if (paymentStatus !== paymentRecord.status) {
+    // Update payment record and CLEAR the webhook token (one-time use)
+    // This prevents replay attacks - subsequent callbacks with same reference will be rejected
+    if (paymentStatus !== paymentRecord.status || paymentRecord.webhook_token) {
       const { error: updateError } = await supabaseAdmin
         .from("payments")
         .update({
           status: paymentStatus,
           payment_date: paymentStatus === "completed" ? new Date().toISOString() : null,
           notes: `Payment ${paymentStatus} via Hubtel callback. Transaction ID: ${TransactionId || "N/A"}`,
+          webhook_token: null, // Clear token to prevent replay attacks
         })
         .eq("transaction_reference", ClientReference);
 

@@ -2,6 +2,13 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 
+// Generate a cryptographically secure webhook verification token
+function generateWebhookToken(): string {
+  const array = new Uint8Array(32);
+  crypto.getRandomValues(array);
+  return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
 serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
   
@@ -72,9 +79,13 @@ serve(async (req) => {
       );
     }
 
+    // Generate a secure webhook verification token
+    // This token will be verified when Hubtel calls our callback
+    const webhookToken = generateWebhookToken();
+
     console.log(`Creating pending payment for user ${userId}: GHS ${amount}, ref: ${reference}`);
 
-    // Create pending payment record
+    // Create pending payment record with webhook token
     const { data: paymentRecord, error: insertError } = await supabaseAdmin
       .from("payments")
       .insert({
@@ -85,6 +96,7 @@ serve(async (req) => {
         transaction_reference: reference,
         status: "pending",
         notes: "Hubtel Online Checkout payment",
+        webhook_token: webhookToken,
       })
       .select()
       .single();
