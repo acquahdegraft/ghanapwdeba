@@ -3,12 +3,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Loader2, CheckCircle2, XCircle, Phone, Smartphone } from "lucide-react";
+import { Loader2, Phone, ExternalLink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { useQueryClient } from "@tanstack/react-query";
 
 interface PaymentModalProps {
   open: boolean;
@@ -17,32 +15,7 @@ interface PaymentModalProps {
   paymentType?: string;
 }
 
-type PaymentStep = "input" | "processing" | "pending" | "success" | "failed";
-type Provider = "mtn" | "vodafone" | "airteltigo";
-
-const providerConfig = {
-  mtn: {
-    name: "MTN Mobile Money",
-    color: "bg-yellow-500",
-    textColor: "text-yellow-600",
-    bgColor: "bg-yellow-50",
-    borderColor: "border-yellow-200",
-  },
-  vodafone: {
-    name: "Vodafone Cash",
-    color: "bg-red-500",
-    textColor: "text-red-600",
-    bgColor: "bg-red-50",
-    borderColor: "border-red-200",
-  },
-  airteltigo: {
-    name: "AirtelTigo Money",
-    color: "bg-blue-500",
-    textColor: "text-blue-600",
-    bgColor: "bg-blue-50",
-    borderColor: "border-blue-200",
-  },
-};
+type PaymentStep = "input" | "processing";
 
 // Rate limiting: prevent rapid payment initiations
 const MIN_PAYMENT_INTERVAL = 60000; // 1 minute between payment attempts
@@ -50,15 +23,8 @@ let lastPaymentTime = 0;
 
 export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "membership_dues" }: PaymentModalProps) {
   const [step, setStep] = useState<PaymentStep>("input");
-  const [provider, setProvider] = useState<Provider>("mtn");
   const [phone, setPhone] = useState("");
-  const [reference, setReference] = useState("");
-  const [displayText, setDisplayText] = useState("");
-  const [consecutiveErrors, setConsecutiveErrors] = useState(0);
   const { user, session } = useAuth();
-  const queryClient = useQueryClient();
-
-  const MAX_CONSECUTIVE_ERRORS = 3;
 
   // Reset on close
   useEffect(() => {
@@ -66,19 +32,11 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
       setTimeout(() => {
         setStep("input");
         setPhone("");
-        setReference("");
-        setDisplayText("");
-        setConsecutiveErrors(0);
       }, 300);
     }
   }, [open]);
 
   const handleInitiatePayment = async () => {
-    if (!phone || phone.length < 9) {
-      toast.error("Please enter a valid phone number");
-      return;
-    }
-
     if (!session?.access_token) {
       toast.error("Please log in to make a payment");
       return;
@@ -96,99 +54,39 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
     setStep("processing");
 
     try {
+      // Build return URL - user will be redirected here after payment
+      const returnUrl = `${window.location.origin}/dashboard/payments?payment=success`;
+
       const { data, error } = await supabase.functions.invoke("process-payment", {
         body: {
           amount,
           email: user?.email,
-          phone,
-          provider,
+          phone: phone || "",
           payment_type: paymentType,
           customer_name: user?.user_metadata?.full_name || "Member",
+          return_url: returnUrl,
         },
       });
 
       if (error) throw error;
 
-      if (data.success) {
-        setReference(data.reference);
-        setDisplayText(data.display_text);
-        setStep("pending");
-        
-        // Start polling for verification
-        pollPaymentStatus(data.reference);
+      if (data.success && data.checkout_url) {
+        toast.success("Redirecting to payment page...");
+        // Redirect to Hubtel checkout page
+        window.location.href = data.checkout_url;
       } else {
         throw new Error(data.error || "Payment failed");
       }
     } catch (error: any) {
       console.error("Payment error:", error);
       toast.error(error.message || "Failed to initiate payment");
-      setStep("failed");
+      setStep("input");
     }
   };
 
-  const pollPaymentStatus = async (ref: string) => {
-    let attempts = 0;
-    const maxAttempts = 60; // 5 minutes with 5-second intervals
-    let errorCount = 0;
-
-    const checkStatus = async () => {
-      attempts++;
-      
-      try {
-        const { data, error } = await supabase.functions.invoke("verify-payment", {
-          body: { reference: ref },
-        });
-
-        if (error) throw error;
-
-        // Reset error count on successful response
-        errorCount = 0;
-
-        if (data.status === "completed") {
-          setStep("success");
-          queryClient.invalidateQueries({ queryKey: ["payments"] });
-          queryClient.invalidateQueries({ queryKey: ["profile"] });
-          toast.success("Payment successful! Your membership is now active.");
-          return;
-        } else if (data.status === "failed") {
-          setStep("failed");
-          toast.error("Payment failed. Please try again.");
-          return;
-        }
-
-        // Still pending, continue polling with exponential backoff
-        if (attempts < maxAttempts) {
-          // Exponential backoff: 5s, 7.5s, 10s, 12.5s... capped at 30s
-          const delay = Math.min(5000 + (attempts * 2500), 30000);
-          setTimeout(() => checkStatus(), delay);
-        } else {
-          toast.info("Payment is still processing. Check your payment history later.");
-        }
-      } catch (error) {
-        console.error("Verification error:", error);
-        errorCount++;
-        
-        // Circuit breaker: stop polling after consecutive errors
-        if (errorCount >= MAX_CONSECUTIVE_ERRORS) {
-          setConsecutiveErrors(errorCount);
-          toast.error("Payment verification failed repeatedly. Please check your payment history or contact support.");
-          return;
-        }
-        
-        if (attempts < maxAttempts) {
-          // Longer delay after errors
-          setTimeout(() => checkStatus(), 10000);
-        }
-      }
-    };
-
-    // Start checking after 10 seconds (give user time to authorize)
-    setTimeout(() => checkStatus(), 10000);
-  };
-
   const handleClose = () => {
-    if (step === "processing" || step === "pending") {
-      toast.info("Payment is being processed. You can close this and check your payment history.");
+    if (step === "processing") {
+      return; // Don't close while processing
     }
     onOpenChange(false);
   };
@@ -199,13 +97,10 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
         <DialogHeader>
           <DialogTitle>
             {step === "input" && "Pay Membership Dues"}
-            {step === "processing" && "Processing Payment"}
-            {step === "pending" && "Authorize Payment"}
-            {step === "success" && "Payment Successful"}
-            {step === "failed" && "Payment Failed"}
+            {step === "processing" && "Redirecting to Payment"}
           </DialogTitle>
           <DialogDescription>
-            {step === "input" && "Choose your mobile money provider and enter your phone number"}
+            {step === "input" && "You'll be redirected to Hubtel's secure payment page"}
           </DialogDescription>
         </DialogHeader>
 
@@ -218,32 +113,9 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
               <p className="text-xs text-muted-foreground mt-1">Annual Membership Dues</p>
             </div>
 
-            {/* Provider Selection */}
-            <div className="space-y-3">
-              <Label>Select Mobile Money Provider</Label>
-              <RadioGroup value={provider} onValueChange={(v) => setProvider(v as Provider)} className="space-y-2">
-                {(Object.keys(providerConfig) as Provider[]).map((p) => (
-                  <label
-                    key={p}
-                    className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-all ${
-                      provider === p 
-                        ? `${providerConfig[p].borderColor} ${providerConfig[p].bgColor}` 
-                        : "hover:bg-muted/50"
-                    }`}
-                  >
-                    <RadioGroupItem value={p} />
-                    <div className={`h-8 w-8 rounded-lg ${providerConfig[p].color} flex items-center justify-center`}>
-                      <Smartphone className="h-4 w-4 text-white" />
-                    </div>
-                    <span className="font-medium">{providerConfig[p].name}</span>
-                  </label>
-                ))}
-              </RadioGroup>
-            </div>
-
-            {/* Phone Input */}
+            {/* Phone Input (Optional) */}
             <div className="space-y-2">
-              <Label htmlFor="phone">Phone Number</Label>
+              <Label htmlFor="phone">Phone Number (Optional)</Label>
               <div className="relative">
                 <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
@@ -256,13 +128,37 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
                 />
               </div>
               <p className="text-xs text-muted-foreground">
-                Enter the phone number linked to your {providerConfig[provider].name} account
+                Pre-fill your mobile money number for faster checkout
               </p>
             </div>
 
+            {/* Supported Payment Methods */}
+            <div className="rounded-lg border p-4 bg-muted/30">
+              <p className="text-sm font-medium mb-2">Supported Payment Methods</p>
+              <div className="flex flex-wrap gap-2">
+                <span className="inline-flex items-center gap-1 rounded-full bg-yellow-500/10 px-2 py-1 text-xs font-medium text-yellow-600">
+                  MTN MoMo
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-full bg-red-500/10 px-2 py-1 text-xs font-medium text-red-600">
+                  Vodafone Cash
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/10 px-2 py-1 text-xs font-medium text-blue-600">
+                  AirtelTigo
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-full bg-green-500/10 px-2 py-1 text-xs font-medium text-green-600">
+                  Bank Cards
+                </span>
+              </div>
+            </div>
+
             <Button onClick={handleInitiatePayment} className="w-full gradient-primary" size="lg">
-              Pay GHS {amount.toFixed(2)}
+              <ExternalLink className="mr-2 h-4 w-4" />
+              Proceed to Pay GHS {amount.toFixed(2)}
             </Button>
+
+            <p className="text-xs text-center text-muted-foreground">
+              Powered by Hubtel • Secure payment processing
+            </p>
           </div>
         )}
 
@@ -270,63 +166,8 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
           <div className="py-8 text-center space-y-4">
             <Loader2 className="h-12 w-12 animate-spin mx-auto text-primary" />
             <div>
-              <p className="font-medium">Initiating payment...</p>
-              <p className="text-sm text-muted-foreground">Please wait while we connect to {providerConfig[provider].name}</p>
-            </div>
-          </div>
-        )}
-
-        {step === "pending" && (
-          <div className="py-6 text-center space-y-4">
-            <div className={`h-16 w-16 rounded-full ${providerConfig[provider].bgColor} flex items-center justify-center mx-auto`}>
-              <Smartphone className={`h-8 w-8 ${providerConfig[provider].textColor}`} />
-            </div>
-            <div>
-              <p className="font-semibold text-lg">Check Your Phone</p>
-              <p className="text-muted-foreground mt-1">{displayText || "A payment prompt has been sent to your phone"}</p>
-            </div>
-            <div className="bg-muted/50 rounded-lg p-4 text-sm space-y-1">
-              <p><strong>Amount:</strong> GHS {amount.toFixed(2)}</p>
-              <p><strong>Reference:</strong> {reference}</p>
-            </div>
-            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Waiting for authorization...
-            </div>
-          </div>
-        )}
-
-        {step === "success" && (
-          <div className="py-8 text-center space-y-4">
-            <div className="h-16 w-16 rounded-full bg-success/10 flex items-center justify-center mx-auto">
-              <CheckCircle2 className="h-10 w-10 text-success" />
-            </div>
-            <div>
-              <p className="font-semibold text-lg">Payment Successful!</p>
-              <p className="text-muted-foreground">Your membership has been activated</p>
-            </div>
-            <Button onClick={() => onOpenChange(false)} className="w-full">
-              Done
-            </Button>
-          </div>
-        )}
-
-        {step === "failed" && (
-          <div className="py-8 text-center space-y-4">
-            <div className="h-16 w-16 rounded-full bg-destructive/10 flex items-center justify-center mx-auto">
-              <XCircle className="h-10 w-10 text-destructive" />
-            </div>
-            <div>
-              <p className="font-semibold text-lg">Payment Failed</p>
-              <p className="text-muted-foreground">Please try again or use a different payment method</p>
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
-                Cancel
-              </Button>
-              <Button onClick={() => setStep("input")} className="flex-1">
-                Try Again
-              </Button>
+              <p className="font-medium">Preparing checkout...</p>
+              <p className="text-sm text-muted-foreground">You'll be redirected to Hubtel's secure payment page</p>
             </div>
           </div>
         )}
