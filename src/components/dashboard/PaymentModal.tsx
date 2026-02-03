@@ -130,8 +130,16 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
       // Wait for Hubtel SDK to be available
       const CheckoutSdk = await waitForHubtelSdk();
 
-      // Get the callback URL for Hubtel webhook
-      const callbackUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/hubtel-callback`;
+      // Fetch Hubtel config from edge function (keeps credentials secure)
+      const { data: hubtelConfig, error: configError } = await supabase.functions.invoke("get-hubtel-config");
+      
+      if (configError || !hubtelConfig) {
+        throw new Error("Unable to load payment configuration. Please try again.");
+      }
+
+      if (!hubtelConfig.merchantAccount || !hubtelConfig.basicAuth) {
+        throw new Error("Payment service is temporarily unavailable.");
+      }
 
       // Initialize checkout
       const checkout = new CheckoutSdk();
@@ -143,19 +151,11 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
         clientReference: clientReference,
       };
 
-      // Get Hubtel credentials from environment
-      const merchantAccount = import.meta.env.VITE_HUBTEL_MERCHANT_ACCOUNT;
-      const basicAuth = import.meta.env.VITE_HUBTEL_BASIC_AUTH;
-
-      if (!merchantAccount || !basicAuth) {
-        throw new Error("Payment configuration is missing. Please contact support.");
-      }
-
       const config = {
         branding: "enabled" as const,
-        callbackUrl: callbackUrl,
-        merchantAccount: parseInt(merchantAccount),
-        basicAuth: basicAuth,
+        callbackUrl: hubtelConfig.callbackUrl,
+        merchantAccount: hubtelConfig.merchantAccount,
+        basicAuth: hubtelConfig.basicAuth,
         integrationType: "External" as const,
       };
 
