@@ -26,6 +26,7 @@ import MemberProfile from "./pages/MemberProfile";
 import Events from "./pages/Events";
 import Resources from "./pages/Resources";
 import AdminDashboard from "./pages/AdminDashboard";
+import PaymentCallback from "./pages/PaymentCallback";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -64,6 +65,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Payments />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/payment-callback"
+              element={
+                <ProtectedRoute>
+                  <PaymentCallback />
                 </ProtectedRoute>
               }
             />
