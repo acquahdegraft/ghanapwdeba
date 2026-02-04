@@ -54,8 +54,8 @@ serve(async (req) => {
       );
     }
 
-    // Create Base64 encoded basic auth string
-    const basicAuth = btoa(`${clientId}:${clientSecret}`);
+    // Create Base64 encoded basic auth string with "Basic " prefix
+    const basicAuth = `Basic ${btoa(`${clientId}:${clientSecret}`)}`;
 
     // Return the config needed for Hubtel Checkout SDK
     return new Response(
