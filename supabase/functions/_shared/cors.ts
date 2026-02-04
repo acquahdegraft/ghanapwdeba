@@ -6,6 +6,8 @@
 // Allowed origins - production, preview, and development
 const ALLOWED_ORIGINS = [
   "https://ghanapwdeba.lovable.app",
+  "https://gpwdeba.org",
+  "https://www.gpwdeba.org",
   "https://id-preview--6940d0c8-bce2-4820-a035-0a76f9318ba8.lovable.app",
   "http://localhost:5173",
   "http://localhost:8080",
