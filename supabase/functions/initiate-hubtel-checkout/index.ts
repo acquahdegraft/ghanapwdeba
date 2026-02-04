@@ -121,9 +121,49 @@ serve(async (req) => {
       body: JSON.stringify(hubtelPayload),
     });
 
-    const hubtelData = await hubtelResponse.json();
+    // Get the raw response text first to handle empty or non-JSON responses
+    const responseText = await hubtelResponse.text();
+    
+    console.log("Hubtel API raw response:", {
+      status: hubtelResponse.status,
+      statusText: hubtelResponse.statusText,
+      ok: hubtelResponse.ok,
+      contentType: hubtelResponse.headers.get("content-type"),
+      bodyLength: responseText.length,
+      bodyPreview: responseText.substring(0, 500)
+    });
 
-    console.log("Hubtel API response:", {
+    // Check if response is empty
+    if (!responseText || responseText.trim() === "") {
+      console.error("Hubtel returned empty response");
+      return new Response(
+        JSON.stringify({ 
+          error: "Payment service returned empty response",
+          details: `Status: ${hubtelResponse.status} ${hubtelResponse.statusText}. The payment service did not return any data.`,
+          status: hubtelResponse.status
+        }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Try to parse JSON
+    let hubtelData;
+    try {
+      hubtelData = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error("Failed to parse Hubtel response as JSON:", parseError);
+      console.error("Raw response:", responseText);
+      return new Response(
+        JSON.stringify({ 
+          error: "Invalid response from payment service",
+          details: `Could not parse response. Status: ${hubtelResponse.status}. Response: ${responseText.substring(0, 200)}`,
+          rawResponse: responseText.substring(0, 500)
+        }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    console.log("Hubtel API parsed response:", {
       status: hubtelResponse.status,
       ok: hubtelResponse.ok,
       data: hubtelData
@@ -134,7 +174,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           error: "Payment initiation failed",
-          details: hubtelData.message || hubtelData.error || `Hubtel returned status ${hubtelResponse.status}`,
+          details: hubtelData.message || hubtelData.error || hubtelData.Message || `Hubtel returned status ${hubtelResponse.status}`,
           hubtelResponse: hubtelData
         }),
         { status: hubtelResponse.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
