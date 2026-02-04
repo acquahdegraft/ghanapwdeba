@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Phone, ExternalLink, CheckCircle2, XCircle } from "lucide-react";
+import { Loader2, Phone, ExternalLink, CheckCircle2, XCircle, AlertTriangle, Copy, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -17,7 +17,7 @@ interface PaymentModalProps {
   paymentType?: string;
 }
 
-type PaymentStep = "input" | "processing" | "success" | "failed";
+type PaymentStep = "input" | "processing" | "success" | "failed" | "unavailable";
 
 // Rate limiting: prevent rapid payment initiations
 const MIN_PAYMENT_INTERVAL = 60000; // 1 minute between payment attempts
@@ -30,10 +30,15 @@ function generateClientReference(): string {
   return `GPAD-${timestamp}-${randomPart}`.toUpperCase();
 }
 
+// Timeout for Hubtel modal loading (15 seconds)
+const HUBTEL_LOAD_TIMEOUT = 15000;
+
 export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "membership_dues" }: PaymentModalProps) {
   const [step, setStep] = useState<PaymentStep>("input");
   const [phone, setPhone] = useState("");
   const [reference, setReference] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [copied, setCopied] = useState(false);
   const { session } = useAuth();
   const queryClient = useQueryClient();
 
@@ -44,9 +49,20 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
         setStep("input");
         setPhone("");
         setReference("");
+        setErrorMessage("");
+        setCopied(false);
       }, 300);
     }
   }, [open]);
+
+  const handleCopyReference = async () => {
+    if (reference) {
+      await navigator.clipboard.writeText(reference);
+      setCopied(true);
+      toast.success("Reference copied to clipboard");
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   const handleInitiatePayment = async () => {
     if (!session?.access_token) {
@@ -83,11 +99,15 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
       const { data: hubtelConfig, error: configError } = await supabase.functions.invoke("get-hubtel-config");
       
       if (configError || !hubtelConfig) {
-        throw new Error("Unable to load payment configuration. Please try again.");
+        setErrorMessage("Unable to connect to the payment service. Please try again later or use the manual payment option.");
+        setStep("unavailable");
+        return;
       }
 
       if (!hubtelConfig.merchantAccount || !hubtelConfig.basicAuth) {
-        throw new Error("Payment service is temporarily unavailable.");
+        setErrorMessage("Payment service is currently being configured. Please use the manual payment option below.");
+        setStep("unavailable");
+        return;
       }
 
       // Initialize checkout using the npm package
@@ -122,6 +142,18 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
         // Continue anyway - the callback will handle it
       }
 
+      // Set a timeout in case Hubtel modal doesn't load
+      let loadTimeout: NodeJS.Timeout | null = null;
+      let modalOpened = false;
+
+      loadTimeout = setTimeout(() => {
+        if (!modalOpened) {
+          console.error("Hubtel checkout timed out");
+          setErrorMessage("The payment service is taking too long to respond. This may be due to high traffic or temporary service issues.");
+          setStep("unavailable");
+        }
+      }, HUBTEL_LOAD_TIMEOUT);
+
       // Open the Hubtel checkout modal
       checkout.openModal({
         purchaseInfo,
@@ -129,6 +161,8 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
         callBacks: {
           onInit: () => {
             console.log("Hubtel checkout initialized");
+            modalOpened = true;
+            if (loadTimeout) clearTimeout(loadTimeout);
           },
           onPaymentSuccess: async () => {
             console.log("Payment succeeded");
@@ -147,10 +181,13 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
           },
           onLoad: () => {
             console.log("Hubtel checkout loaded");
+            modalOpened = true;
+            if (loadTimeout) clearTimeout(loadTimeout);
             setStep("input"); // Reset to input since modal is now handling it
           },
           onClose: () => {
             console.log("Hubtel checkout closed");
+            if (loadTimeout) clearTimeout(loadTimeout);
             if (step === "processing") {
               setStep("input");
             }
@@ -160,8 +197,8 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
 
     } catch (error: unknown) {
       console.error("Payment error:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to initiate payment");
-      setStep("input");
+      setErrorMessage(error instanceof Error ? error.message : "An unexpected error occurred while initiating payment.");
+      setStep("unavailable");
     }
   };
 
@@ -181,9 +218,11 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
             {step === "processing" && "Opening Payment"}
             {step === "success" && "Payment Successful"}
             {step === "failed" && "Payment Failed"}
+            {step === "unavailable" && "Payment Service Unavailable"}
           </DialogTitle>
           <DialogDescription>
             {step === "input" && "Complete your payment securely with Hubtel"}
+            {step === "unavailable" && "Don't worry - you can still complete your payment manually"}
           </DialogDescription>
         </DialogHeader>
 
@@ -284,12 +323,90 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
               <p className="font-semibold text-lg">Payment Failed</p>
               <p className="text-muted-foreground">Please try again or use a different payment method</p>
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
+            <div className="flex flex-col gap-2">
+              <Button onClick={() => setStep("input")} className="w-full">
+                Try Again
+              </Button>
+              <Button variant="outline" onClick={() => setStep("unavailable")} className="w-full">
+                Manual Payment Option
+              </Button>
+              <Button variant="ghost" onClick={() => onOpenChange(false)} className="w-full text-muted-foreground">
                 Cancel
               </Button>
-              <Button onClick={() => setStep("input")} className="flex-1">
-                Try Again
+            </div>
+          </div>
+        )}
+
+        {step === "unavailable" && (
+          <div className="py-4 space-y-4">
+            <div className="flex items-start gap-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+              <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+              <div className="text-sm">
+                <p className="font-medium text-amber-600 dark:text-amber-400">Online payment temporarily unavailable</p>
+                <p className="text-muted-foreground mt-1">{errorMessage || "The payment service is currently experiencing issues."}</p>
+              </div>
+            </div>
+
+            {/* Manual Payment Instructions */}
+            <div className="space-y-3">
+              <p className="font-medium text-sm">Complete your payment manually:</p>
+              
+              <div className="rounded-lg border p-4 space-y-3 bg-muted/30">
+                <div className="space-y-2">
+                  <p className="text-sm"><span className="font-medium">Amount:</span> GHS {amount.toFixed(2)}</p>
+                  
+                  {reference && (
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm">
+                        <span className="font-medium">Reference:</span>{" "}
+                        <span className="font-mono text-xs">{reference}</span>
+                      </p>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={handleCopyReference}
+                        className="h-7 px-2"
+                      >
+                        {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="border-t pt-3 space-y-2">
+                  <p className="text-sm font-medium">Mobile Money Options:</p>
+                  <div className="grid gap-2 text-xs text-muted-foreground">
+                    <div className="flex items-start gap-2">
+                      <span className="font-medium text-foreground">MTN MoMo:</span>
+                      <span>Dial *170# → Send Money → Enter merchant number</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="font-medium text-foreground">Vodafone Cash:</span>
+                      <span>Dial *110# → Send Money → Enter merchant number</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="font-medium text-foreground">AirtelTigo:</span>
+                      <span>Dial *501# → Send Money → Enter merchant number</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t pt-3">
+                  <p className="text-xs text-muted-foreground">
+                    <span className="font-medium text-foreground">Important:</span> Use the reference number above when making payment. 
+                    Contact us at <span className="font-medium">support@gpwdeba.org</span> after payment for confirmation.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2 pt-2">
+              <Button onClick={() => setStep("input")} className="w-full">
+                <ExternalLink className="mr-2 h-4 w-4" />
+                Try Online Payment Again
+              </Button>
+              <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full">
+                Close
               </Button>
             </div>
           </div>
@@ -299,29 +416,3 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
   );
 }
 
-// Type definitions for Hubtel SDK
-interface HubtelCheckout {
-  openModal: (options: {
-    purchaseInfo: {
-      amount: number;
-      purchaseDescription: string;
-      customerPhoneNumber: string;
-      clientReference: string;
-    };
-    config: {
-      branding: "enabled" | "disabled";
-      callbackUrl: string;
-      merchantAccount: number;
-      basicAuth: string;
-      integrationType: "External" | "Internal";
-    };
-    callBacks: {
-      onInit?: () => void;
-      onPaymentSuccess?: () => void;
-      onPaymentFailure?: () => void;
-      onLoad?: () => void;
-      onClose?: () => void;
-    };
-  }) => void;
-  closePopUp: () => void;
-}
