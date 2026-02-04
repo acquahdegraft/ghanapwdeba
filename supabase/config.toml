@@ -50,3 +50,13 @@ verify_jwt = false
 # Webhook endpoint for Hubtel payment status callbacks
 # No JWT verification - validates via ClientReference matching
 verify_jwt = false
+
+[functions.initiate-hubtel-checkout]
+# Initiates Hubtel Redirect Checkout for web payments
+# Manually verifies JWT for user authentication
+verify_jwt = false
+
+[functions.get-hubtel-config]
+# Returns Hubtel config for authenticated users (legacy SDK support)
+# Manually verifies JWT
+verify_jwt = false
