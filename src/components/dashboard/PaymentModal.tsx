@@ -7,8 +7,6 @@ import { Loader2, Phone, ExternalLink, CheckCircle2, XCircle, AlertTriangle, Cop
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { useQueryClient } from "@tanstack/react-query";
-import CheckoutSdk from "@hubteljs/checkout";
 
 interface PaymentModalProps {
   open: boolean;
@@ -30,17 +28,14 @@ function generateClientReference(): string {
   return `GPAD-${timestamp}-${randomPart}`.toUpperCase();
 }
 
-// Timeout for Hubtel modal loading (15 seconds)
-const HUBTEL_LOAD_TIMEOUT = 15000;
-
 export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "membership_dues" }: PaymentModalProps) {
   const [step, setStep] = useState<PaymentStep>("input");
   const [phone, setPhone] = useState("");
   const [reference, setReference] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const { session } = useAuth();
-  const queryClient = useQueryClient();
 
   // Reset on close
   useEffect(() => {
@@ -50,6 +45,7 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
         setPhone("");
         setReference("");
         setErrorMessage("");
+        setErrorDetails(null);
         setCopied(false);
       }, 300);
     }
@@ -80,53 +76,12 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
     lastPaymentTime = now;
 
     setStep("processing");
+    setErrorMessage("");
+    setErrorDetails(null);
 
     try {
       const clientReference = generateClientReference();
       setReference(clientReference);
-
-      // Format phone number for Ghana
-      let formattedPhone = phone.replace(/\s/g, "").replace(/^\+233/, "0").replace(/^233/, "0");
-      if (formattedPhone && !formattedPhone.startsWith("0")) {
-        formattedPhone = "0" + formattedPhone;
-      }
-      // Convert to international format for Hubtel
-      if (formattedPhone.startsWith("0")) {
-        formattedPhone = "233" + formattedPhone.substring(1);
-      }
-
-      // Fetch Hubtel config from edge function (keeps credentials secure)
-      const { data: hubtelConfig, error: configError } = await supabase.functions.invoke("get-hubtel-config");
-      
-      if (configError || !hubtelConfig) {
-        setErrorMessage("Unable to connect to the payment service. Please try again later or use the manual payment option.");
-        setStep("unavailable");
-        return;
-      }
-
-      if (!hubtelConfig.merchantAccount || !hubtelConfig.basicAuth) {
-        setErrorMessage("Payment service is currently being configured. Please use the manual payment option below.");
-        setStep("unavailable");
-        return;
-      }
-
-      // Initialize checkout using the npm package
-      const checkout = new CheckoutSdk();
-
-      const purchaseInfo = {
-        amount: amount,
-        purchaseDescription: `GPWDEBA Membership Dues - ${paymentType}`,
-        customerPhoneNumber: formattedPhone || "233000000000",
-        clientReference: clientReference,
-      };
-
-      const config = {
-        branding: "enabled" as const,
-        callbackUrl: hubtelConfig.callbackUrl,
-        merchantAccount: hubtelConfig.merchantAccount,
-        basicAuth: hubtelConfig.basicAuth,
-        integrationType: "External" as const,
-      };
 
       // First, create a pending payment record
       const { error: insertError } = await supabase.functions.invoke("create-pending-payment", {
@@ -142,68 +97,48 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
         // Continue anyway - the callback will handle it
       }
 
-      // Set a timeout in case Hubtel modal doesn't load
-      let loadTimeout: NodeJS.Timeout | null = null;
-      let modalOpened = false;
-
-      loadTimeout = setTimeout(() => {
-        if (!modalOpened) {
-          console.error("Hubtel checkout timed out");
-          setErrorMessage("The payment service is taking too long to respond. This may be due to high traffic or temporary service issues.");
-          setStep("unavailable");
-        }
-      }, HUBTEL_LOAD_TIMEOUT);
-
-      // Open the Hubtel checkout modal
-      checkout.openModal({
-        purchaseInfo,
-        config,
-        callBacks: {
-          onInit: () => {
-            console.log("Hubtel checkout initialized");
-            modalOpened = true;
-            if (loadTimeout) clearTimeout(loadTimeout);
-          },
-          onPaymentSuccess: async (data: unknown) => {
-            console.log("Payment succeeded, response data:", JSON.stringify(data, null, 2));
-            checkout.closePopUp();
-            setStep("success");
-            // Refresh data
-            queryClient.invalidateQueries({ queryKey: ["payments"] });
-            queryClient.invalidateQueries({ queryKey: ["profile"] });
-            toast.success("Payment successful! Your membership is now active.");
-          },
-          onPaymentFailure: (error: unknown) => {
-            console.error("Payment failed, error details:", JSON.stringify(error, null, 2));
-            console.error("Payment failure - raw error:", error);
-            checkout.closePopUp();
-            const errorMsg = typeof error === 'object' && error !== null && 'message' in error 
-              ? String((error as { message: string }).message) 
-              : "Payment was not completed";
-            setErrorMessage(errorMsg);
-            setStep("failed");
-            toast.error("Payment failed. Please try again.");
-          },
-          onLoad: () => {
-            console.log("Hubtel checkout loaded");
-            modalOpened = true;
-            if (loadTimeout) clearTimeout(loadTimeout);
-            setStep("input"); // Reset to input since modal is now handling it
-          },
-          onClose: () => {
-            console.log("Hubtel checkout closed");
-            if (loadTimeout) clearTimeout(loadTimeout);
-            if (step === "processing") {
-              console.log("Checkout closed while still processing - user may have cancelled or Hubtel had an error");
-              setStep("input");
-            }
-          },
+      // Call the Hubtel Redirect Checkout API
+      console.log("Initiating Hubtel redirect checkout...", { amount, paymentType, clientReference });
+      
+      const { data, error } = await supabase.functions.invoke("initiate-hubtel-checkout", {
+        body: {
+          amount,
+          paymentType,
+          clientReference,
+          description: `GPWDEBA Membership Dues - ${paymentType}`,
         },
       });
 
+      console.log("Hubtel checkout response:", { data, error });
+
+      if (error) {
+        console.error("Edge function error:", error);
+        setErrorMessage("Failed to connect to payment service");
+        setErrorDetails(error.message || JSON.stringify(error));
+        setStep("unavailable");
+        return;
+      }
+
+      if (!data?.success || !data?.checkoutUrl) {
+        console.error("Invalid response from checkout API:", data);
+        setErrorMessage(data?.error || "Failed to initiate payment");
+        setErrorDetails(data?.details || JSON.stringify(data));
+        setStep("unavailable");
+        return;
+      }
+
+      // Redirect the user to Hubtel's checkout page
+      console.log("Redirecting to Hubtel checkout:", data.checkoutUrl);
+      toast.info("Redirecting to payment page...");
+      
+      // Close the modal and redirect
+      onOpenChange(false);
+      window.location.href = data.checkoutUrl;
+
     } catch (error: unknown) {
-      console.error("Payment error:", error);
-      setErrorMessage(error instanceof Error ? error.message : "An unexpected error occurred while initiating payment.");
+      console.error("Payment initiation error:", error);
+      setErrorMessage("An unexpected error occurred");
+      setErrorDetails(error instanceof Error ? error.message : JSON.stringify(error));
       setStep("unavailable");
     }
   };
@@ -221,13 +156,14 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
         <DialogHeader>
           <DialogTitle>
             {step === "input" && "Pay Membership Dues"}
-            {step === "processing" && "Opening Payment"}
+            {step === "processing" && "Connecting to Payment..."}
             {step === "success" && "Payment Successful"}
             {step === "failed" && "Payment Failed"}
             {step === "unavailable" && "Payment Service Unavailable"}
           </DialogTitle>
           <DialogDescription>
-            {step === "input" && "Complete your payment securely with Hubtel"}
+            {step === "input" && "You'll be redirected to Hubtel's secure payment page"}
+            {step === "processing" && "Please wait while we connect to the payment service"}
             {step === "unavailable" && "Don't worry - you can still complete your payment manually"}
           </DialogDescription>
         </DialogHeader>
@@ -241,7 +177,7 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
               <p className="text-xs text-muted-foreground mt-1">Annual Membership Dues</p>
             </div>
 
-            {/* Phone Input (Optional) */}
+            {/* Phone Input (Optional - for reference) */}
             <div className="space-y-2">
               <Label htmlFor="phone">Phone Number (Optional)</Label>
               <div className="relative">
@@ -256,7 +192,7 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
                 />
               </div>
               <p className="text-xs text-muted-foreground">
-                Pre-fill your mobile money number for faster checkout
+                For your records only - you'll enter payment details on Hubtel's page
               </p>
             </div>
 
@@ -285,7 +221,7 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
             </Button>
 
             <p className="text-xs text-center text-muted-foreground">
-              Powered by Hubtel • Secure payment processing
+              Powered by Hubtel • You'll be redirected to complete payment securely
             </p>
           </div>
         )}
@@ -294,8 +230,8 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
           <div className="py-8 text-center space-y-4">
             <Loader2 className="h-12 w-12 animate-spin mx-auto text-primary" />
             <div>
-              <p className="font-medium">Opening payment window...</p>
-              <p className="text-sm text-muted-foreground">Please complete your payment in the popup</p>
+              <p className="font-medium">Connecting to payment service...</p>
+              <p className="text-sm text-muted-foreground">You'll be redirected to Hubtel shortly</p>
             </div>
           </div>
         )}
@@ -352,6 +288,18 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
                 <p className="text-muted-foreground mt-1">{errorMessage || "The payment service is currently experiencing issues."}</p>
               </div>
             </div>
+
+            {/* Error Details (for debugging) */}
+            {errorDetails && (
+              <details className="rounded-lg border p-3 bg-muted/20">
+                <summary className="text-xs font-medium cursor-pointer text-muted-foreground">
+                  Technical Details (for support)
+                </summary>
+                <pre className="mt-2 text-xs overflow-x-auto whitespace-pre-wrap break-all text-muted-foreground bg-muted/50 p-2 rounded">
+                  {errorDetails}
+                </pre>
+              </details>
+            )}
 
             {/* Manual Payment Instructions */}
             <div className="space-y-3">
@@ -421,4 +369,3 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
     </Dialog>
   );
 }
-
