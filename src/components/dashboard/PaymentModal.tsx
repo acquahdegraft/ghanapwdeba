@@ -164,8 +164,8 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
             modalOpened = true;
             if (loadTimeout) clearTimeout(loadTimeout);
           },
-          onPaymentSuccess: async () => {
-            console.log("Payment succeeded");
+          onPaymentSuccess: async (data: unknown) => {
+            console.log("Payment succeeded, response data:", JSON.stringify(data, null, 2));
             checkout.closePopUp();
             setStep("success");
             // Refresh data
@@ -173,9 +173,14 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
             queryClient.invalidateQueries({ queryKey: ["profile"] });
             toast.success("Payment successful! Your membership is now active.");
           },
-          onPaymentFailure: () => {
-            console.log("Payment failed");
+          onPaymentFailure: (error: unknown) => {
+            console.error("Payment failed, error details:", JSON.stringify(error, null, 2));
+            console.error("Payment failure - raw error:", error);
             checkout.closePopUp();
+            const errorMsg = typeof error === 'object' && error !== null && 'message' in error 
+              ? String((error as { message: string }).message) 
+              : "Payment was not completed";
+            setErrorMessage(errorMsg);
             setStep("failed");
             toast.error("Payment failed. Please try again.");
           },
@@ -189,6 +194,7 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
             console.log("Hubtel checkout closed");
             if (loadTimeout) clearTimeout(loadTimeout);
             if (step === "processing") {
+              console.log("Checkout closed while still processing - user may have cancelled or Hubtel had an error");
               setStep("input");
             }
           },
