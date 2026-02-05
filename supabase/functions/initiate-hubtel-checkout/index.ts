@@ -2,14 +2,17 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 
-// Initiates Hubtel Redirect Checkout and returns the checkout URL
-// This is the web-appropriate flow (not the Android SDK)
+// Initiates Hubtel Online Checkout (Redirect flow) and returns the checkout URL
+// See: https://docs.hubtel.com/online-checkout
 
 interface CheckoutRequest {
   amount: number;
   paymentType: string;
   clientReference: string;
   description?: string;
+  payeeName?: string;
+  payeeMobileNumber?: string;
+  payeeEmail?: string;
 }
 
 serve(async (req) => {
@@ -51,7 +54,7 @@ serve(async (req) => {
 
     // Parse request body
     const body: CheckoutRequest = await req.json();
-    const { amount, paymentType, clientReference, description } = body;
+    const { amount, paymentType, clientReference, description, payeeName, payeeMobileNumber, payeeEmail } = body;
 
     if (!amount || !clientReference) {
       return new Response(
@@ -85,13 +88,13 @@ serve(async (req) => {
     // Create Basic auth header
     const basicAuth = `Basic ${btoa(`${clientId}:${clientSecret}`)}`;
 
-    const merchantAccountNumberInt = Number.parseInt(merchantAccountNumber, 10);
-    if (!Number.isFinite(merchantAccountNumberInt)) {
-      console.error("Invalid HUBTEL_MERCHANT_ACCOUNT_NUMBER (not a number)");
+    // Per Hubtel docs, merchantAccountNumber is a STRING (POS Sales ID)
+    if (!merchantAccountNumber || merchantAccountNumber.length === 0) {
+      console.error("Invalid HUBTEL_MERCHANT_ACCOUNT_NUMBER (empty)");
       return new Response(
         JSON.stringify({
           error: "Payment service not configured",
-          details: "Merchant account number is invalid. Please contact support.",
+          details: "Merchant account number is missing. Please contact support.",
         }),
         { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
@@ -106,23 +109,41 @@ serve(async (req) => {
     // Hubtel callback URL for server-to-server notifications
     const callbackUrl = `${supabaseUrl}/functions/v1/hubtel-callback`;
 
-    // Prepare the Hubtel API request
-    const hubtelPayload = {
+    // Prepare the Hubtel API request per official docs
+    // Required: totalAmount, description, callbackUrl, returnUrl, merchantAccountNumber, cancellationUrl, clientReference
+    const hubtelPayload: Record<string, unknown> = {
       totalAmount: amount,
       description: description || `GPWDEBA Membership Dues - ${paymentType}`,
       callbackUrl: callbackUrl,
       returnUrl: returnUrl,
       cancellationUrl: cancellationUrl,
-      merchantAccountNumber: merchantAccountNumberInt,
+      merchantAccountNumber: merchantAccountNumber, // String per docs
       clientReference: clientReference,
     };
+
+    // Add optional payee details if provided
+    if (payeeName) {
+      hubtelPayload.payeeName = payeeName;
+    }
+    if (payeeMobileNumber) {
+      // Format to 233XXXXXXXXX if needed
+      let formattedPhone = payeeMobileNumber.replace(/\s+/g, "").replace(/^0/, "233");
+      if (!formattedPhone.startsWith("233")) {
+        formattedPhone = "233" + formattedPhone;
+      }
+      hubtelPayload.payeeMobileNumber = formattedPhone;
+    }
+    if (payeeEmail) {
+      hubtelPayload.payeeEmail = payeeEmail;
+    }
 
     console.log("Initiating Hubtel checkout:", {
       amount,
       clientReference,
-      merchantAccountNumber: merchantAccountNumberInt,
+      merchantAccountNumber,
       callbackUrl,
-      returnUrl
+      returnUrl,
+      hasPayeeDetails: !!(payeeName || payeeMobileNumber || payeeEmail)
     });
 
     // Call Hubtel's initiate API
