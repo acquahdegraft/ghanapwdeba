@@ -6,10 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Loader2, Phone, ExternalLink, CheckCircle2, XCircle, AlertTriangle, Copy, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useProfile } from "@/hooks/useProfile";
 import { toast } from "sonner";
-
-// Hubtel Unified Pay base URL (official checkout page)
-const UNIFIED_PAY_BASE_URL = "https://unified-pay.hubtel.com/pay";
 
 interface PaymentModalProps {
   open: boolean;
@@ -39,6 +37,7 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const { session } = useAuth();
+  const { data: profile } = useProfile();
 
   // Reset on close
   useEffect(() => {
@@ -86,7 +85,7 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
       const clientReference = generateClientReference();
       setReference(clientReference);
 
-      // First, create a pending payment record
+      // Create a pending payment record first
       const { error: insertError } = await supabase.functions.invoke("create-pending-payment", {
         body: {
           amount,
@@ -100,61 +99,56 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
         // Continue anyway - the callback will handle it
       }
 
-      // Get Hubtel config from edge function (credentials stay on server)
-      console.log("Fetching Hubtel config for redirect...", { amount, paymentType, clientReference });
-      
-      const { data: configData, error: configError } = await supabase.functions.invoke("get-hubtel-config", {
-        body: {},
-      });
-      
-      console.log("Hubtel config response:", { configData, configError });
-      
-      if (configError) {
-        console.error("Edge function error:", configError);
-        setErrorMessage("Failed to connect to payment service");
-        setErrorDetails(configError.message || JSON.stringify(configError));
-        setStep("unavailable");
-        return;
-      }
-      
-      if (!configData?.merchantAccount || !configData?.basicAuth) {
-        console.error("Invalid config from edge function:", configData);
-        setErrorMessage(configData?.error || "Payment service not configured");
-        setErrorDetails(JSON.stringify(configData));
-        setStep("unavailable");
-        return;
-      }
-      
-      // Construct the Unified Pay redirect URL (same as official SDK does)
-      const checkoutParams = new URLSearchParams({
-        amount: amount.toString(),
-        purchaseDescription: `GPWDEBA Membership Dues - ${paymentType}`,
-        clientReference: clientReference,
-        merchantAccount: configData.merchantAccount.toString(),
-        basicAuth: configData.basicAuth,
-        callbackUrl: configData.callbackUrl,
-        integrationType: "External",
-      });
-      
-      // Add optional phone if provided
+      // Format phone number if provided (233XXXXXXXXX format)
+      let formattedPhone = "";
       if (phone) {
-        // Format phone number for Hubtel (233XXXXXXXXX format)
-        let formattedPhone = phone.replace(/\s+/g, "").replace(/-/g, "");
+        formattedPhone = phone.replace(/\s+/g, "").replace(/-/g, "");
         if (formattedPhone.startsWith("0")) {
           formattedPhone = "233" + formattedPhone.substring(1);
         } else if (!formattedPhone.startsWith("233")) {
           formattedPhone = "233" + formattedPhone;
         }
-        checkoutParams.set("customerPhoneNumber", formattedPhone);
+      }
+
+      // Call the initiate-hubtel-checkout edge function (proper API flow)
+      console.log("Initiating Hubtel checkout...", { amount, paymentType, clientReference });
+      
+      const { data, error } = await supabase.functions.invoke("initiate-hubtel-checkout", {
+        body: {
+          amount,
+          paymentType,
+          clientReference,
+          description: `GPWDEBA Membership Dues - ${paymentType}`,
+          payeeName: profile?.full_name,
+          payeeMobileNumber: formattedPhone || undefined,
+          payeeEmail: profile?.email,
+        },
+      });
+      
+      console.log("Hubtel checkout response:", { data, error });
+      
+      if (error) {
+        console.error("Checkout initiation error:", error);
+        setErrorMessage("Failed to initiate payment");
+        setErrorDetails(error.message || JSON.stringify(error));
+        setStep("unavailable");
+        return;
       }
       
-      const checkoutUrl = `${UNIFIED_PAY_BASE_URL}?${checkoutParams.toString()}`;
-      console.log("Redirecting to Hubtel Unified Pay:", checkoutUrl);
+      if (!data?.checkoutUrl) {
+        console.error("No checkout URL in response:", data);
+        setErrorMessage(data?.error || "Payment service returned invalid response");
+        setErrorDetails(JSON.stringify(data));
+        setStep("unavailable");
+        return;
+      }
+      
+      console.log("Redirecting to Hubtel checkout:", data.checkoutUrl);
       toast.info("Redirecting to payment page...");
 
       // Close the modal and redirect
       onOpenChange(false);
-      window.location.href = checkoutUrl;
+      window.location.href = data.checkoutUrl;
 
     } catch (error: unknown) {
       console.error("Payment initiation error:", error);
