@@ -86,7 +86,8 @@ serve(async (req) => {
     }
 
     // Create Basic auth header
-    const basicAuth = `Basic ${btoa(`${clientId}:${clientSecret}`)}`;
+    // Note: clientId:clientSecret is already Base64 encoded by the user
+    const basicAuth = `Basic ${clientId}:${clientSecret}`;
 
     // Per Hubtel docs, merchantAccountNumber is a STRING (POS Sales ID)
     if (!merchantAccountNumber || merchantAccountNumber.length === 0) {
