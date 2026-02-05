@@ -8,6 +8,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
+// Hubtel Unified Pay base URL (official checkout page)
+const UNIFIED_PAY_BASE_URL = "https://unified-pay.hubtel.com/pay";
+
 interface PaymentModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -97,43 +100,61 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
         // Continue anyway - the callback will handle it
       }
 
-      // Call the Hubtel Redirect Checkout API
-      console.log("Initiating Hubtel redirect checkout...", { amount, paymentType, clientReference });
+      // Get Hubtel config from edge function (credentials stay on server)
+      console.log("Fetching Hubtel config for redirect...", { amount, paymentType, clientReference });
       
-      const { data, error } = await supabase.functions.invoke("initiate-hubtel-checkout", {
-        body: {
-          amount,
-          paymentType,
-          clientReference,
-          description: `GPWDEBA Membership Dues - ${paymentType}`,
-        },
+      const { data: configData, error: configError } = await supabase.functions.invoke("get-hubtel-config", {
+        body: {},
       });
-
-      console.log("Hubtel checkout response:", { data, error });
-
-      if (error) {
-        console.error("Edge function error:", error);
-        setErrorMessage("Failed to connect to payment service");
-        setErrorDetails(error.message || JSON.stringify(error));
-        setStep("unavailable");
-        return;
-      }
-
-      if (!data?.success || !data?.checkoutUrl) {
-        console.error("Invalid response from checkout API:", data);
-        setErrorMessage(data?.error || "Failed to initiate payment");
-        setErrorDetails(data?.details || JSON.stringify(data));
-        setStep("unavailable");
-        return;
-      }
-
-      // Redirect the user to Hubtel's checkout page
-      console.log("Redirecting to Hubtel checkout:", data.checkoutUrl);
-      toast.info("Redirecting to payment page...");
       
+      console.log("Hubtel config response:", { configData, configError });
+      
+      if (configError) {
+        console.error("Edge function error:", configError);
+        setErrorMessage("Failed to connect to payment service");
+        setErrorDetails(configError.message || JSON.stringify(configError));
+        setStep("unavailable");
+        return;
+      }
+      
+      if (!configData?.merchantAccount || !configData?.basicAuth) {
+        console.error("Invalid config from edge function:", configData);
+        setErrorMessage(configData?.error || "Payment service not configured");
+        setErrorDetails(JSON.stringify(configData));
+        setStep("unavailable");
+        return;
+      }
+      
+      // Construct the Unified Pay redirect URL (same as official SDK does)
+      const checkoutParams = new URLSearchParams({
+        amount: amount.toString(),
+        purchaseDescription: `GPWDEBA Membership Dues - ${paymentType}`,
+        clientReference: clientReference,
+        merchantAccount: configData.merchantAccount.toString(),
+        basicAuth: configData.basicAuth,
+        callbackUrl: configData.callbackUrl,
+        integrationType: "External",
+      });
+      
+      // Add optional phone if provided
+      if (phone) {
+        // Format phone number for Hubtel (233XXXXXXXXX format)
+        let formattedPhone = phone.replace(/\s+/g, "").replace(/-/g, "");
+        if (formattedPhone.startsWith("0")) {
+          formattedPhone = "233" + formattedPhone.substring(1);
+        } else if (!formattedPhone.startsWith("233")) {
+          formattedPhone = "233" + formattedPhone;
+        }
+        checkoutParams.set("customerPhoneNumber", formattedPhone);
+      }
+      
+      const checkoutUrl = `${UNIFIED_PAY_BASE_URL}?${checkoutParams.toString()}`;
+      console.log("Redirecting to Hubtel Unified Pay:", checkoutUrl);
+      toast.info("Redirecting to payment page...");
+
       // Close the modal and redirect
       onOpenChange(false);
-      window.location.href = data.checkoutUrl;
+      window.location.href = checkoutUrl;
 
     } catch (error: unknown) {
       console.error("Payment initiation error:", error);

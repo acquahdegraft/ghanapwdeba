@@ -3,7 +3,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 
 // Returns Hubtel checkout configuration for authenticated users
-// This keeps credentials secure on the server while allowing frontend SDK usage
+// The frontend uses these values to construct a direct redirect to unified-pay.hubtel.com
+// This approach bypasses the payproxyapi server-to-server call entirely
 
 serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
@@ -42,9 +43,9 @@ serve(async (req) => {
     }
 
     // Get Hubtel credentials from environment
-    const merchantAccount = Deno.env.get("HUBTEL_MERCHANT_ACCOUNT_NUMBER");
-    const clientId = Deno.env.get("HUBTEL_CLIENT_ID");
-    const clientSecret = Deno.env.get("HUBTEL_CLIENT_SECRET");
+    const merchantAccount = Deno.env.get("HUBTEL_MERCHANT_ACCOUNT_NUMBER")?.trim();
+    const clientId = Deno.env.get("HUBTEL_CLIENT_ID")?.trim();
+    const clientSecret = Deno.env.get("HUBTEL_CLIENT_SECRET")?.trim();
 
     if (!merchantAccount || !clientId || !clientSecret) {
       console.error("Hubtel credentials not configured");
@@ -54,13 +55,22 @@ serve(async (req) => {
       );
     }
 
-    // Create Base64 encoded basic auth string with "Basic " prefix
-    const basicAuth = `Basic ${btoa(`${clientId}:${clientSecret}`)}`;
+    // Create Base64 encoded basic auth string (without "Basic " prefix - SDK adds it)
+    const basicAuth = btoa(`${clientId}:${clientSecret}`);
 
-    // Return the config needed for Hubtel Checkout SDK
+    const merchantAccountInt = parseInt(merchantAccount, 10);
+    if (isNaN(merchantAccountInt)) {
+      console.error("Invalid HUBTEL_MERCHANT_ACCOUNT_NUMBER");
+      return new Response(
+        JSON.stringify({ error: "Payment service misconfigured" }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Return the config needed for Unified Pay redirect
     return new Response(
       JSON.stringify({
-        merchantAccount: parseInt(merchantAccount),
+        merchantAccount: merchantAccountInt,
         basicAuth: basicAuth,
         callbackUrl: `${supabaseUrl}/functions/v1/hubtel-callback`,
       }),
