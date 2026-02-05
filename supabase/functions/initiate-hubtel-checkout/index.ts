@@ -61,9 +61,11 @@ serve(async (req) => {
     }
 
     // Get Hubtel credentials from environment
-    const merchantAccountNumber = Deno.env.get("HUBTEL_MERCHANT_ACCOUNT_NUMBER");
-    const clientId = Deno.env.get("HUBTEL_CLIENT_ID");
-    const clientSecret = Deno.env.get("HUBTEL_CLIENT_SECRET");
+    // NOTE: Secrets can occasionally include accidental whitespace/newlines when pasted.
+    // Trimming prevents subtle auth failures (401) caused by `"<id>\n"`.
+    const merchantAccountNumber = Deno.env.get("HUBTEL_MERCHANT_ACCOUNT_NUMBER")?.trim();
+    const clientId = Deno.env.get("HUBTEL_CLIENT_ID")?.trim();
+    const clientSecret = Deno.env.get("HUBTEL_CLIENT_SECRET")?.trim();
 
     if (!merchantAccountNumber || !clientId || !clientSecret) {
       console.error("Hubtel credentials not configured:", {
@@ -83,6 +85,18 @@ serve(async (req) => {
     // Create Basic auth header
     const basicAuth = `Basic ${btoa(`${clientId}:${clientSecret}`)}`;
 
+    const merchantAccountNumberInt = Number.parseInt(merchantAccountNumber, 10);
+    if (!Number.isFinite(merchantAccountNumberInt)) {
+      console.error("Invalid HUBTEL_MERCHANT_ACCOUNT_NUMBER (not a number)");
+      return new Response(
+        JSON.stringify({
+          error: "Payment service not configured",
+          details: "Merchant account number is invalid. Please contact support.",
+        }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Construct return and cancellation URLs
     // These should point to the frontend callback page
     const frontendUrl = req.headers.get("origin") || "https://ghanapwdeba.lovable.app";
@@ -99,14 +113,14 @@ serve(async (req) => {
       callbackUrl: callbackUrl,
       returnUrl: returnUrl,
       cancellationUrl: cancellationUrl,
-      merchantAccountNumber: merchantAccountNumber,
+      merchantAccountNumber: merchantAccountNumberInt,
       clientReference: clientReference,
     };
 
     console.log("Initiating Hubtel checkout:", {
       amount,
       clientReference,
-      merchantAccountNumber,
+      merchantAccountNumber: merchantAccountNumberInt,
       callbackUrl,
       returnUrl
     });
@@ -116,6 +130,7 @@ serve(async (req) => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "Accept": "application/json",
         "Authorization": basicAuth,
       },
       body: JSON.stringify(hubtelPayload),
@@ -129,6 +144,7 @@ serve(async (req) => {
       statusText: hubtelResponse.statusText,
       ok: hubtelResponse.ok,
       contentType: hubtelResponse.headers.get("content-type"),
+      wwwAuthenticate: hubtelResponse.headers.get("www-authenticate"),
       bodyLength: responseText.length,
       bodyPreview: responseText.substring(0, 500)
     });
