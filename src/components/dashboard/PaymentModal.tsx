@@ -290,16 +290,33 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
             </div>
 
             {/* Error Details (for debugging) */}
-            {errorDetails && (
-              <details className="rounded-lg border p-3 bg-muted/20">
-                <summary className="text-xs font-medium cursor-pointer text-muted-foreground">
-                  Technical Details (for support)
-                </summary>
-                <pre className="mt-2 text-xs overflow-x-auto whitespace-pre-wrap break-all text-muted-foreground bg-muted/50 p-2 rounded">
-                  {errorDetails}
-                </pre>
-              </details>
-            )}
+            <div className="space-y-3">
+              {errorDetails && (
+                <details className="rounded-lg border p-3 bg-muted/20" open>
+                  <summary className="text-xs font-medium cursor-pointer text-muted-foreground">
+                    Error Details
+                  </summary>
+                  <pre className="mt-2 text-xs overflow-x-auto whitespace-pre-wrap break-all text-muted-foreground bg-muted/50 p-2 rounded">
+                    {errorDetails}
+                  </pre>
+                </details>
+              )}
+              
+              {/* 401 Specific Help */}
+              {errorDetails?.includes("401") && (
+                <div className="rounded-lg border border-blue-500/30 p-3 bg-blue-500/5">
+                  <p className="text-xs font-medium text-blue-600 dark:text-blue-400 mb-1">
+                    🔑 Authentication Issue Detected
+                  </p>
+                  <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
+                    <li>Verify <strong>HUBTEL_CLIENT_ID</strong> matches your Hubtel API ID</li>
+                    <li>Verify <strong>HUBTEL_CLIENT_SECRET</strong> matches your Hubtel API Key</li>
+                    <li>Ensure "Receive Money" scope is enabled in Hubtel dashboard</li>
+                    <li>Check if your Hubtel account is active and verified</li>
+                  </ul>
+                </div>
+              )}
+            </div>
 
             {/* Manual Payment Instructions */}
             <div className="space-y-3">
