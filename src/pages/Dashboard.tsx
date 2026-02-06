@@ -8,11 +8,13 @@ import { AnnouncementsBanner } from "@/components/dashboard/AnnouncementsBanner"
 import { CreditCard, Calendar, FileText, Users } from "lucide-react";
 import { useProfile } from "@/hooks/useProfile";
 import { usePayments } from "@/hooks/usePayments";
+import { useMemberDues } from "@/hooks/useMemberDues";
 import { format, differenceInDays, parseISO } from "date-fns";
 
 export default function Dashboard() {
   const { data: profile, isLoading: profileLoading } = useProfile();
   const { data: payments, isLoading: paymentsLoading } = usePayments();
+  const { duesAmount, membershipTypeName } = useMemberDues();
 
   const firstName = profile?.full_name?.split(" ")[0] || "Member";
   
@@ -57,7 +59,7 @@ export default function Dashboard() {
         />
         <StatCard
           title="Next Payment Due"
-          value="GHS 100"
+          value={`GHS ${duesAmount.toFixed(2)}`}
           description={membershipExpiry ? `Due in ${daysRemaining} days` : "After activation"}
           icon={<CreditCard className="h-5 w-5" />}
           variant="default"
@@ -82,8 +84,8 @@ export default function Dashboard() {
         {/* Left Column - Payment & Status */}
         <div className="space-y-6">
           <PaymentCard
-            membershipType={profile?.membership_status === "active" ? "Standard Member" : "Pending Member"}
-            amount="100.00"
+            membershipType={membershipTypeName}
+            amount={duesAmount.toFixed(2)}
             currency="GHS"
             dueDate={expiryFormatted}
             status={lastPayment?.status === "completed" ? "paid" : "pending"}
@@ -92,7 +94,7 @@ export default function Dashboard() {
           <MembershipStatusCard
             memberSince={memberSince}
             expiryDate={expiryFormatted}
-            membershipLevel={profile?.membership_status === "active" ? "Standard Member" : "Pending Activation"}
+            membershipLevel={membershipTypeName}
             memberNumber={`GPWDEBA-${profile?.id?.slice(0, 8).toUpperCase() || "XXXXXXXX"}`}
             daysRemaining={daysRemaining}
             totalDays={365}
