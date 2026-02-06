@@ -101,10 +101,10 @@ export function useAllPayments() {
   return useQuery({
     queryKey: ["admin", "payments"],
     queryFn: async () => {
-      // First get all payments
+      // Explicitly select columns - exclude webhook_token as it's for backend use only
       const { data: paymentsData, error: paymentsError } = await supabase
         .from("payments")
-        .select("*")
+        .select("id, user_id, amount, payment_type, payment_method, transaction_reference, status, payment_date, due_date, notes, created_at, updated_at")
         .order("created_at", { ascending: false });
 
       if (paymentsError) throw paymentsError;
