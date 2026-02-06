@@ -497,6 +497,54 @@ export type Database = {
         }
         Relationships: []
       }
+      payments_safe: {
+        Row: {
+          amount: number | null
+          created_at: string | null
+          due_date: string | null
+          id: string | null
+          notes: string | null
+          payment_date: string | null
+          payment_method: string | null
+          payment_type: string | null
+          status: Database["public"]["Enums"]["payment_status"] | null
+          transaction_reference: string | null
+          updated_at: string | null
+          user_id: string | null
+          webhook_token: string | null
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string | null
+          due_date?: string | null
+          id?: string | null
+          notes?: string | null
+          payment_date?: string | null
+          payment_method?: string | null
+          payment_type?: string | null
+          status?: Database["public"]["Enums"]["payment_status"] | null
+          transaction_reference?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+          webhook_token?: never
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string | null
+          due_date?: string | null
+          id?: string | null
+          notes?: string | null
+          payment_date?: string | null
+          payment_method?: string | null
+          payment_type?: string | null
+          status?: Database["public"]["Enums"]["payment_status"] | null
+          transaction_reference?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+          webhook_token?: never
+        }
+        Relationships: []
+      }
     }
     Functions: {
       has_role: {
