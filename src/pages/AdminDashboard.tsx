@@ -29,34 +29,34 @@ export default function AdminDashboard() {
 
       {/* Tabs for all admin sections */}
       <Tabs defaultValue="analytics" className="space-y-6">
-        <TabsList className="grid w-full max-w-4xl grid-cols-7">
-          <TabsTrigger value="analytics" className="flex items-center gap-2">
+        <TabsList className="flex flex-wrap gap-1 h-auto p-1">
+          <TabsTrigger value="analytics" className="flex items-center gap-2 px-3 py-2">
             <BarChart3 className="h-4 w-4" />
-            <span className="hidden sm:inline">Analytics</span>
+            <span>Analytics</span>
           </TabsTrigger>
-          <TabsTrigger value="members" className="flex items-center gap-2">
+          <TabsTrigger value="members" className="flex items-center gap-2 px-3 py-2">
             <Users className="h-4 w-4" />
-            <span className="hidden sm:inline">Members</span>
+            <span>Members</span>
           </TabsTrigger>
-          <TabsTrigger value="payments" className="flex items-center gap-2">
+          <TabsTrigger value="payments" className="flex items-center gap-2 px-3 py-2">
             <CreditCard className="h-4 w-4" />
-            <span className="hidden sm:inline">Payments</span>
+            <span>Payments</span>
           </TabsTrigger>
-          <TabsTrigger value="dues" className="flex items-center gap-2">
+          <TabsTrigger value="dues" className="flex items-center gap-2 px-3 py-2">
             <DollarSign className="h-4 w-4" />
-            <span className="hidden sm:inline">Dues</span>
+            <span>Dues</span>
           </TabsTrigger>
-          <TabsTrigger value="events" className="flex items-center gap-2">
+          <TabsTrigger value="events" className="flex items-center gap-2 px-3 py-2">
             <Calendar className="h-4 w-4" />
-            <span className="hidden sm:inline">Events</span>
+            <span>Events</span>
           </TabsTrigger>
-          <TabsTrigger value="resources" className="flex items-center gap-2">
+          <TabsTrigger value="resources" className="flex items-center gap-2 px-3 py-2">
             <FileText className="h-4 w-4" />
-            <span className="hidden sm:inline">Resources</span>
+            <span>Resources</span>
           </TabsTrigger>
-          <TabsTrigger value="announcements" className="flex items-center gap-2">
+          <TabsTrigger value="announcements" className="flex items-center gap-2 px-3 py-2">
             <Megaphone className="h-4 w-4" />
-            <span className="hidden sm:inline">Announcements</span>
+            <span>Announcements</span>
           </TabsTrigger>
         </TabsList>
 
