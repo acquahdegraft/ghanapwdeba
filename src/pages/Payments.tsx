@@ -5,11 +5,15 @@ import { StatCard } from "@/components/dashboard/StatCard";
 import { CreditCard, TrendingUp, Calendar, Receipt } from "lucide-react";
 import { useProfile } from "@/hooks/useProfile";
 import { usePayments } from "@/hooks/usePayments";
+import { useMemberDues } from "@/hooks/useMemberDues";
+import { useMembershipTypes } from "@/hooks/useMembershipTypes";
 import { format, parseISO, differenceInDays } from "date-fns";
 
 export default function Payments() {
   const { data: profile } = useProfile();
   const { data: payments } = usePayments();
+  const { duesAmount, membershipTypeName } = useMemberDues();
+  const { data: allMembershipTypes } = useMembershipTypes();
 
   const totalPaidThisYear = payments?.reduce((sum, p) => {
     if (p.status === "completed" && p.payment_date) {
@@ -77,8 +81,8 @@ export default function Payments() {
       <div className="mb-8 grid gap-6 lg:grid-cols-3">
         {/* Current Year Payment */}
         <PaymentCard
-          membershipType="Standard Member"
-          amount="100.00"
+          membershipType={membershipTypeName}
+          amount={duesAmount.toFixed(2)}
           currency="GHS"
           dueDate={expiryFormatted}
           status={lastPayment?.status === "completed" ? "paid" : "pending"}
@@ -132,27 +136,27 @@ export default function Payments() {
         <div className="rounded-xl border bg-card p-6">
           <h3 className="mb-4 font-semibold">Membership Fee Structure</h3>
           <div className="space-y-3">
-            <div className="flex items-center justify-between rounded-lg bg-muted/50 p-3">
-              <div>
-                <p className="text-sm font-medium">Standard Member</p>
-                <p className="text-xs text-muted-foreground">Annual fee</p>
-              </div>
-              <p className="text-lg font-bold">GHS 100</p>
-            </div>
-            <div className="flex items-center justify-between rounded-lg bg-muted/50 p-3">
-              <div>
-                <p className="text-sm font-medium">Premium Member</p>
-                <p className="text-xs text-muted-foreground">Annual fee</p>
-              </div>
-              <p className="text-lg font-bold">GHS 250</p>
-            </div>
-            <div className="flex items-center justify-between rounded-lg bg-muted/50 p-3">
-              <div>
-                <p className="text-sm font-medium">Corporate Member</p>
-                <p className="text-xs text-muted-foreground">Annual fee</p>
-              </div>
-              <p className="text-lg font-bold">GHS 500</p>
-            </div>
+            {allMembershipTypes && allMembershipTypes.length > 0 ? (
+              allMembershipTypes.map((type) => (
+                <div key={type.id} className="flex items-center justify-between rounded-lg bg-muted/50 p-3">
+                  <div>
+                    <p className="text-sm font-medium">{type.name}</p>
+                    <p className="text-xs text-muted-foreground">Annual fee</p>
+                  </div>
+                  <p className="text-lg font-bold">GHS {type.annual_dues.toFixed(2)}</p>
+                </div>
+              ))
+            ) : (
+              <>
+                <div className="flex items-center justify-between rounded-lg bg-muted/50 p-3">
+                  <div>
+                    <p className="text-sm font-medium">Standard Member</p>
+                    <p className="text-xs text-muted-foreground">Annual fee</p>
+                  </div>
+                  <p className="text-lg font-bold">GHS 100.00</p>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

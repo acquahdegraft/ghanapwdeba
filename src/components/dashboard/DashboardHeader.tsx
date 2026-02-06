@@ -3,10 +3,11 @@ import { Bell, Search, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PaymentModal } from "./PaymentModal";
+import { useMemberDues } from "@/hooks/useMemberDues";
 
 export function DashboardHeader() {
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
-
+  const { duesAmount, isLoading } = useMemberDues();
   return (
     <>
       <header className="flex h-16 items-center justify-between border-b bg-card px-6">
@@ -40,8 +41,9 @@ export function DashboardHeader() {
           <Button 
             size="sm" 
             onClick={() => setPaymentModalOpen(true)}
+            disabled={isLoading}
           >
-            Pay Dues
+            {isLoading ? "Loading..." : `Pay GHS ${duesAmount.toFixed(2)}`}
           </Button>
         </div>
       </header>
@@ -49,7 +51,7 @@ export function DashboardHeader() {
       <PaymentModal 
         open={paymentModalOpen} 
         onOpenChange={setPaymentModalOpen}
-        amount={100}
+        amount={duesAmount}
         paymentType="membership_dues"
       />
     </>

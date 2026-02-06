@@ -106,7 +106,7 @@ export function PaymentCard({
                 onClick={() => setPaymentModalOpen(true)}
                 className="w-full gradient-accent border-0 text-accent-foreground font-semibold"
               >
-                Pay Now
+                Pay {currency} {amount}
               </Button>
               <p className="mt-2 text-center text-xs text-muted-foreground">
                 MTN MoMo • Vodafone Cash • AirtelTigo
