@@ -60,3 +60,8 @@ verify_jwt = false
 # Returns Hubtel config for authenticated users (legacy SDK support)
 # Manually verifies JWT
 verify_jwt = false
+
+[functions.check-hubtel-status]
+# Checks transaction status directly with Hubtel API
+# Manually verifies JWT and user ownership of payment
+verify_jwt = false
