@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { CheckCircle2, XCircle, Loader2, AlertCircle } from "lucide-react";
+import { CheckCircle2, XCircle, Loader2, AlertCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 type PaymentStatus = "loading" | "success" | "failed" | "cancelled" | "pending";
 
@@ -14,6 +15,8 @@ export default function PaymentCallback() {
   const queryClient = useQueryClient();
   const [status, setStatus] = useState<PaymentStatus>("loading");
   const [reference, setReference] = useState<string | null>(null);
+  const [isCheckingStatus, setIsCheckingStatus] = useState(false);
+  const [lastChecked, setLastChecked] = useState<Date | null>(null);
 
   useEffect(() => {
     const checkPaymentStatus = async () => {
@@ -71,6 +74,44 @@ export default function PaymentCallback() {
     checkPaymentStatus();
   }, [searchParams, queryClient]);
 
+  const handleCheckStatus = async () => {
+    if (!reference || isCheckingStatus) return;
+
+    setIsCheckingStatus(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("check-hubtel-status", {
+        body: { clientReference: reference },
+      });
+
+      setLastChecked(new Date());
+
+      if (error) {
+        console.error("Status check error:", error);
+        toast.error("Unable to check payment status. Please try again.");
+        return;
+      }
+
+      if (data.status === "completed") {
+        setStatus("success");
+        queryClient.invalidateQueries({ queryKey: ["payments"] });
+        queryClient.invalidateQueries({ queryKey: ["profile"] });
+        toast.success("Payment confirmed!");
+      } else if (data.status === "failed") {
+        setStatus("failed");
+        toast.error("Payment failed. Please try again.");
+      } else if (data.status === "pending") {
+        toast.info("Payment is still being processed. Please wait a moment and try again.");
+      } else {
+        toast.info(data.message || "Unable to determine payment status.");
+      }
+    } catch (error) {
+      console.error("Status check error:", error);
+      toast.error("Failed to check payment status. Please try again later.");
+    } finally {
+      setIsCheckingStatus(false);
+    }
+  };
+
   const handleGoToPayments = () => {
     navigate("/dashboard/payments");
   };
@@ -123,17 +164,42 @@ export default function PaymentCallback() {
               <div>
                 <h2 className="text-2xl font-bold text-warning">Payment Processing</h2>
                 <p className="text-muted-foreground mt-2">
-                  Your payment is being processed. This may take a few moments. Please check your payment history shortly.
+                  Your payment is being processed. This may take a few moments.
                 </p>
                 {reference && (
                   <p className="text-sm text-muted-foreground mt-2">
                     Reference: <span className="font-mono">{reference}</span>
                   </p>
                 )}
+                {lastChecked && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Last checked: {lastChecked.toLocaleTimeString()}
+                  </p>
+                )}
               </div>
-              <Button onClick={handleGoToPayments} className="w-full mt-4">
-                Check Payment Status
-              </Button>
+              <div className="flex flex-col gap-2 mt-4">
+                <Button 
+                  onClick={handleCheckStatus} 
+                  disabled={isCheckingStatus || !reference}
+                  variant="default"
+                  className="w-full"
+                >
+                  {isCheckingStatus ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Checking...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      Check Payment Status
+                    </>
+                  )}
+                </Button>
+                <Button onClick={handleGoToPayments} variant="outline" className="w-full">
+                  Go to Payment History
+                </Button>
+              </div>
             </div>
           )}
 
