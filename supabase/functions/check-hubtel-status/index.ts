@@ -67,6 +67,7 @@ interface StatusCheckResult {
   isFulfilled?: boolean | null;
   timestamp?: string;
   message?: string;
+  databaseUpdated?: boolean; // Indicates if database was synced
 }
 
 serve(async (req) => {
@@ -153,7 +154,7 @@ serve(async (req) => {
     // SECURITY: Verify the user owns this payment
     const { data: paymentRecord, error: paymentError } = await supabase
       .from("payments")
-      .select("user_id, status, amount")
+      .select("id, user_id, status, amount")
       .eq("transaction_reference", clientReference)
       .single();
 
@@ -164,6 +165,9 @@ serve(async (req) => {
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    const paymentId = paymentRecord.id;
+    const currentPaymentStatus = paymentRecord.status;
 
     // SECURITY: Verify ownership
     if (paymentRecord.user_id !== authenticatedUserId) {
@@ -271,6 +275,69 @@ serve(async (req) => {
       result.transactionDate = data.date;
       result.isFulfilled = data.isFulfilled;
       result.timestamp = new Date().toISOString();
+
+      // Sync database if payment is confirmed as Paid and not already completed
+      if (result.status === "completed" && currentPaymentStatus !== "completed") {
+        console.log(`Syncing payment ${paymentId} to completed status`);
+        
+        // Use service role client for database update
+        const supabaseServiceRole = createClient(
+          supabaseUrl,
+          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+        );
+
+        const updateData: Record<string, unknown> = {
+          status: "completed",
+          payment_date: data.date || new Date().toISOString(),
+          webhook_token: null, // Clear webhook token after successful payment
+          updated_at: new Date().toISOString(),
+        };
+
+        // Add payment method if available
+        if (data.paymentMethod) {
+          updateData.payment_method = data.paymentMethod;
+        }
+
+        // Add transaction ID to notes if available
+        if (data.transactionId || data.externalTransactionId) {
+          updateData.notes = `Hubtel TxnID: ${data.transactionId || "N/A"}, External TxnID: ${data.externalTransactionId || "N/A"}`;
+        }
+
+        const { error: updateError } = await supabaseServiceRole
+          .from("payments")
+          .update(updateData)
+          .eq("id", paymentId);
+
+        if (updateError) {
+          console.error("Failed to update payment record:", updateError);
+          result.databaseUpdated = false;
+          result.message = "Payment confirmed but database sync failed. Please contact support.";
+        } else {
+          console.log(`Payment ${paymentId} successfully updated to completed`);
+          result.databaseUpdated = true;
+
+          // Also update user profile membership status
+          const { error: profileError } = await supabaseServiceRole
+            .from("profiles")
+            .update({
+              membership_status: "active",
+              membership_start_date: new Date().toISOString().split("T")[0],
+              membership_expiry_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+              updated_at: new Date().toISOString(),
+            })
+            .eq("user_id", authenticatedUserId);
+
+          if (profileError) {
+            console.error("Failed to update profile membership status:", profileError);
+          } else {
+            console.log(`Profile for user ${authenticatedUserId} updated to active membership`);
+          }
+        }
+      } else if (result.status === "completed" && currentPaymentStatus === "completed") {
+        // Already completed, no update needed
+        result.databaseUpdated = false;
+        result.message = "Payment already marked as completed";
+      }
     } else {
       // Hubtel returned an error or no data
       result.status = "pending"; // Default to pending if we can't determine
