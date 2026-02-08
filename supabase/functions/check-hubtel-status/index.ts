@@ -11,7 +11,10 @@ import { checkRateLimit, createRateLimitResponse, getRateLimitHeaders, type Rate
  * This function queries Hubtel's transaction status API directly and returns
  * the current status of a payment transaction.
  * 
- * Hubtel API Reference: https://docs.hubtel.com/docs/check-transaction-status
+ * Official API Endpoint: https://api-txnstatus.hubtel.com/transactions/{POS_Sales_ID}/status
+ * 
+ * Note: Only requests from whitelisted IPs can reach the Hubtel endpoint.
+ * Contact your Retail Systems Engineer to whitelist your server IPs.
  */
 
 // Rate limit: 20 status checks per minute per user
@@ -31,21 +34,20 @@ function validateReference(reference: unknown): reference is string {
 }
 
 interface HubtelStatusResponse {
-  ResponseCode: string;
-  Message?: string;
-  Data?: {
-    Status: string;
-    TransactionId?: string;
-    Amount?: number;
-    Charges?: number;
-    AmountAfterCharges?: number;
-    Description?: string;
-    ClientReference?: string;
-    ExternalTransactionId?: string;
-    MobileNumber?: string;
-    PaymentMethod?: string;
-    StartDate?: string;
-    EndDate?: string;
+  responseCode: string;
+  message?: string;
+  data?: {
+    date?: string;
+    status: string; // "Paid", "Unpaid", "Refunded"
+    transactionId?: string;
+    externalTransactionId?: string;
+    paymentMethod?: string;
+    clientReference?: string;
+    currencyCode?: string | null;
+    amount?: number;
+    charges?: number;
+    amountAfterCharges?: number;
+    isFulfilled?: boolean | null;
   };
 }
 
@@ -55,12 +57,14 @@ interface StatusCheckResult {
   status: "pending" | "completed" | "failed" | "unknown";
   hubtelStatus?: string;
   transactionId?: string;
+  externalTransactionId?: string;
   amount?: number;
   charges?: number;
   amountAfterCharges?: number;
   paymentMethod?: string;
-  mobileNumber?: string;
-  description?: string;
+  currencyCode?: string | null;
+  transactionDate?: string;
+  isFulfilled?: boolean | null;
   timestamp?: string;
   message?: string;
 }
@@ -173,9 +177,9 @@ serve(async (req) => {
     // Get Hubtel credentials
     const hubtelClientId = Deno.env.get("HUBTEL_CLIENT_ID")?.trim();
     const hubtelClientSecret = Deno.env.get("HUBTEL_CLIENT_SECRET")?.trim();
-    const hubtelMerchantAccountNumber = Deno.env.get("HUBTEL_MERCHANT_ACCOUNT_NUMBER")?.trim();
+    const hubtelPosSalesId = Deno.env.get("HUBTEL_MERCHANT_ACCOUNT_NUMBER")?.trim(); // POS Sales ID
 
-    if (!hubtelClientId || !hubtelClientSecret || !hubtelMerchantAccountNumber) {
+    if (!hubtelClientId || !hubtelClientSecret || !hubtelPosSalesId) {
       console.error("Hubtel credentials not configured");
       return new Response(
         JSON.stringify({ 
@@ -189,8 +193,9 @@ serve(async (req) => {
     // Build Hubtel Basic Auth header
     const hubtelAuth = btoa(`${hubtelClientId}:${hubtelClientSecret}`);
     
-    // Call Hubtel's transaction status API
-    const hubtelUrl = `https://api.hubtel.com/v1/merchantaccount/merchants/${hubtelMerchantAccountNumber}/transactions/status?clientReference=${encodeURIComponent(clientReference)}`;
+    // Call Hubtel's official Transaction Status Check API
+    // Endpoint: https://api-txnstatus.hubtel.com/transactions/{POS_Sales_ID}/status
+    const hubtelUrl = `https://api-txnstatus.hubtel.com/transactions/${hubtelPosSalesId}/status?clientReference=${encodeURIComponent(clientReference)}`;
     
     console.log(`Checking Hubtel status for reference: ${clientReference}`);
     
@@ -231,42 +236,45 @@ serve(async (req) => {
 
     // Build result
     const result: StatusCheckResult = {
-      success: hubtelData.ResponseCode === "0000",
+      success: hubtelData.responseCode === "0000",
       clientReference: clientReference,
       status: "unknown",
-      message: hubtelData.Message,
+      message: hubtelData.message,
     };
 
-    if (hubtelData.ResponseCode === "0000" && hubtelData.Data) {
-      const data = hubtelData.Data;
+    if (hubtelData.responseCode === "0000" && hubtelData.data) {
+      const data = hubtelData.data;
       
-      // Map Hubtel status to our status
-      const hubtelStatus = data.Status?.toLowerCase() || "";
-      result.hubtelStatus = data.Status;
+      // Map Hubtel status to our internal status
+      // Hubtel returns: "Paid", "Unpaid", "Refunded"
+      const hubtelStatus = data.status?.toLowerCase() || "";
+      result.hubtelStatus = data.status;
       
-      if (hubtelStatus === "success" || hubtelStatus === "successful") {
+      if (hubtelStatus === "paid") {
         result.status = "completed";
-      } else if (hubtelStatus === "failed" || hubtelStatus === "failure") {
-        result.status = "failed";
-      } else if (hubtelStatus === "pending") {
+      } else if (hubtelStatus === "unpaid") {
         result.status = "pending";
+      } else if (hubtelStatus === "refunded") {
+        result.status = "failed"; // Treat refunded as failed for our purposes
       } else {
         result.status = "unknown";
       }
 
-      // Add transaction details
-      result.transactionId = data.TransactionId;
-      result.amount = data.Amount;
-      result.charges = data.Charges;
-      result.amountAfterCharges = data.AmountAfterCharges;
-      result.paymentMethod = data.PaymentMethod;
-      result.mobileNumber = data.MobileNumber;
-      result.description = data.Description;
+      // Add transaction details from official API response
+      result.transactionId = data.transactionId;
+      result.externalTransactionId = data.externalTransactionId;
+      result.amount = data.amount;
+      result.charges = data.charges;
+      result.amountAfterCharges = data.amountAfterCharges;
+      result.paymentMethod = data.paymentMethod;
+      result.currencyCode = data.currencyCode;
+      result.transactionDate = data.date;
+      result.isFulfilled = data.isFulfilled;
       result.timestamp = new Date().toISOString();
     } else {
       // Hubtel returned an error or no data
       result.status = "pending"; // Default to pending if we can't determine
-      result.message = hubtelData.Message || "Unable to retrieve transaction status";
+      result.message = hubtelData.message || "Unable to retrieve transaction status";
     }
 
     return new Response(
