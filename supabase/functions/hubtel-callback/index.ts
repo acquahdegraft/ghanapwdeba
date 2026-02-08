@@ -40,6 +40,7 @@ serve(async (req) => {
       Status,
       ClientReference,
       TransactionId,
+      Amount,
     } = callbackData as {
       Status?: string;
       ClientReference?: string;
@@ -47,6 +48,9 @@ serve(async (req) => {
       TransactionId?: string;
     };
 
+    // === INPUT VALIDATION ===
+    
+    // Validate ClientReference presence
     if (!ClientReference) {
       console.error("Missing ClientReference in callback");
       return new Response(JSON.stringify({ success: false, error: "Missing ClientReference" }), {
@@ -55,13 +59,51 @@ serve(async (req) => {
       });
     }
 
-    // Validate ClientReference format (alphanumeric with hyphens and underscores)
-    if (!/^[a-zA-Z0-9_-]+$/.test(ClientReference)) {
+    // Validate ClientReference format (alphanumeric with hyphens and underscores, max 100 chars)
+    if (!/^[a-zA-Z0-9_-]{1,100}$/.test(ClientReference)) {
       console.error("Invalid ClientReference format");
       return new Response(JSON.stringify({ success: false, error: "Invalid reference format" }), {
         status: 400,
         headers: { "Content-Type": "application/json" }
       });
+    }
+
+    // Validate Status field - must be a non-empty string with allowed values
+    const allowedStatuses = ["success", "Success", "SUCCESS", "failed", "Failed", "FAILED", "pending", "Pending", "PENDING", "cancelled", "Cancelled", "CANCELLED"];
+    if (Status !== undefined && Status !== null) {
+      if (typeof Status !== "string" || Status.length > 50) {
+        console.error("Invalid Status format");
+        return new Response(JSON.stringify({ success: false, error: "Invalid status format" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+      // Warn but don't reject unknown statuses (Hubtel may add new ones)
+      if (!allowedStatuses.includes(Status)) {
+        console.warn(`Unknown Status value received: ${Status}`);
+      }
+    }
+
+    // Validate TransactionId format if provided (alphanumeric, max 100 chars)
+    if (TransactionId !== undefined && TransactionId !== null) {
+      if (typeof TransactionId !== "string" || TransactionId.length > 100 || !/^[a-zA-Z0-9_-]*$/.test(TransactionId)) {
+        console.error("Invalid TransactionId format");
+        return new Response(JSON.stringify({ success: false, error: "Invalid transaction ID format" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+    }
+
+    // Validate Amount if provided (must be a positive number)
+    if (Amount !== undefined && Amount !== null) {
+      if (typeof Amount !== "number" || Amount < 0 || Amount > 1000000 || !isFinite(Amount)) {
+        console.error("Invalid Amount value");
+        return new Response(JSON.stringify({ success: false, error: "Invalid amount value" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
     }
 
     // Find the payment record with its webhook token
@@ -77,6 +119,20 @@ serve(async (req) => {
         status: 404,
         headers: { "Content-Type": "application/json" }
       });
+    }
+
+    // SECURITY CHECK: Verify Amount matches original payment (if provided)
+    // This prevents amount tampering in webhook payloads
+    if (Amount !== undefined && Amount !== null) {
+      const expectedAmount = Number(paymentRecord.amount);
+      // Allow small floating point tolerance (0.01)
+      if (Math.abs(Amount - expectedAmount) > 0.01) {
+        console.error(`Amount mismatch: received ${Amount}, expected ${expectedAmount} for ${ClientReference}`);
+        return new Response(JSON.stringify({ success: false, error: "Amount mismatch" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
     }
 
     // SECURITY CHECK: Verify this is a legitimate callback
