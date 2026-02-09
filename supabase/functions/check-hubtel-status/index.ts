@@ -11,7 +11,7 @@ import { checkRateLimit, createRateLimitResponse, getRateLimitHeaders, type Rate
  * This function queries Hubtel's transaction status API directly and returns
  * the current status of a payment transaction.
  * 
- * Official API Endpoint: https://api-txnstatus.hubtel.com/transactions/{POS_Sales_ID}/status
+ * Official API Endpoint: https://rmsc.hubtel.com/v1/merchantaccount/merchants/{POS_Sales_ID}/transactions/status
  * 
  * Note: Only requests from whitelisted IPs can reach the Hubtel endpoint.
  * Contact your Retail Systems Engineer to whitelist your server IPs.
@@ -197,9 +197,9 @@ serve(async (req) => {
     // Build Hubtel Basic Auth header
     const hubtelAuth = btoa(`${hubtelClientId}:${hubtelClientSecret}`);
     
-    // Call Hubtel's official Transaction Status Check API
-    // Endpoint: https://api-txnstatus.hubtel.com/transactions/{POS_Sales_ID}/status
-    const hubtelUrl = `https://api-txnstatus.hubtel.com/transactions/${hubtelPosSalesId}/status?clientReference=${encodeURIComponent(clientReference)}`;
+    // Call Hubtel's RMSC Transaction Status Check API (no IP whitelisting required)
+    // Endpoint: https://rmsc.hubtel.com/v1/merchantaccount/merchants/{POS_Sales_ID}/transactions/status
+    const hubtelUrl = `https://rmsc.hubtel.com/v1/merchantaccount/merchants/${hubtelPosSalesId}/transactions/status?clientReference=${encodeURIComponent(clientReference)}`;
     
     console.log(`Checking Hubtel status for reference: ${clientReference}`);
     
