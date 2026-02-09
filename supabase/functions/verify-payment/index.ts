@@ -148,7 +148,7 @@ serve(async (req) => {
     const hubtelAuth = btoa(`${hubtelClientId}:${hubtelClientSecret}`);
     
     const verifyResponse = await fetch(
-      `https://api.hubtel.com/v1/merchantaccount/merchants/${hubtelMerchantAccountNumber}/transactions/status?clientReference=${encodeURIComponent(reference)}`,
+      `https://rmsc.hubtel.com/v1/merchantaccount/merchants/${hubtelMerchantAccountNumber}/transactions/status?clientReference=${encodeURIComponent(reference)}`,
       {
         headers: {
           Authorization: `Basic ${hubtelAuth}`,
