@@ -65,14 +65,40 @@ export const ghanaRegions = [
   }
 ];
 
-export const disabilityTypes = [
-  "Physical Disability",
-  "Visual Impairment",
-  "Hearing Impairment",
-  "Intellectual Disability",
-  "Mental Health Condition",
-  "Multiple Disabilities",
-  "Other"
+// Maps display labels to database enum values for disability_type
+export const disabilityTypeOptions: { label: string; value: string }[] = [
+  { label: "Physical Disability", value: "physical" },
+  { label: "Visual Impairment", value: "visual" },
+  { label: "Hearing Impairment", value: "hearing" },
+  { label: "Intellectual Disability", value: "intellectual" },
+  { label: "Psychosocial Disability", value: "psychosocial" },
+  { label: "Multiple Disabilities", value: "multiple" },
+  { label: "Other", value: "other" },
+];
+
+// Keep legacy export for backward compat but mark deprecated
+export const disabilityTypes = disabilityTypeOptions.map((d) => d.label);
+
+// Helper to convert display label to enum value
+export function disabilityLabelToEnum(label: string): string {
+  const found = disabilityTypeOptions.find(
+    (d) => d.label.toLowerCase() === label.toLowerCase()
+  );
+  return found?.value || label.toLowerCase();
+}
+
+// Helper to convert enum value to display label
+export function disabilityEnumToLabel(enumVal: string): string {
+  const found = disabilityTypeOptions.find(
+    (d) => d.value === enumVal
+  );
+  return found?.label || enumVal;
+}
+
+export const genderOptions = [
+  { label: "Male", value: "male" },
+  { label: "Female", value: "female" },
+  { label: "Prefer not to say", value: "prefer_not_to_say" },
 ];
 
 export const businessTypes = [
