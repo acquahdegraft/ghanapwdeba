@@ -6,9 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
+import { useMembershipTypes } from "@/hooks/useMembershipTypes";
 import { PasswordStrengthIndicator } from "@/components/auth/PasswordStrengthIndicator";
 import { toast } from "sonner";
 import { z } from "zod";
+import { disabilityTypeOptions, genderOptions } from "@/lib/ghanaRegions";
 
 const benefits = [
   "Access to business development resources",
@@ -33,11 +35,13 @@ export default function Register() {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [region, setRegion] = useState("");
-  const [businessType, setBusinessType] = useState("");
+  const [gender, setGender] = useState("");
+  const [disabilityType, setDisabilityType] = useState("");
+  const [membershipTypeId, setMembershipTypeId] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
   const { signUp, user } = useAuth();
+  const { data: membershipTypes } = useMembershipTypes();
 
   useEffect(() => {
     if (user) {
@@ -66,6 +70,9 @@ export default function Register() {
     const { error } = await signUp(email, password, {
       full_name: `${firstName} ${lastName}`,
       phone,
+      gender: gender || undefined,
+      disability_type: disabilityType || undefined,
+      membership_type_id: membershipTypeId || undefined,
     });
     
     setIsLoading(false);
@@ -96,7 +103,7 @@ export default function Register() {
               to="/"
               className="mb-8 inline-flex items-center gap-2 text-sm text-primary-foreground/70 hover:text-primary-foreground"
             >
-              <ArrowLeft className="h-4 w-4" />
+              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
               Back to home
             </Link>
             
@@ -114,7 +121,7 @@ export default function Register() {
               {benefits.map((benefit, index) => (
                 <div key={index} className="flex items-start gap-3">
                   <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary-foreground/20">
-                    <Check className="h-3 w-3" />
+                    <Check className="h-3 w-3" aria-hidden="true" />
                   </div>
                   <span className="text-sm">{benefit}</span>
                 </div>
@@ -132,7 +139,7 @@ export default function Register() {
             to="/"
             className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground lg:hidden"
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
             Back
           </Link>
 
@@ -153,10 +160,10 @@ export default function Register() {
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4" aria-label="Registration form">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="firstName">First name</Label>
+                <Label htmlFor="firstName">First name *</Label>
                 <Input 
                   id="firstName" 
                   placeholder="Kwame" 
@@ -167,7 +174,7 @@ export default function Register() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="lastName">Last name</Label>
+                <Label htmlFor="lastName">Last name *</Label>
                 <Input 
                   id="lastName" 
                   placeholder="Asante" 
@@ -180,7 +187,7 @@ export default function Register() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="email">Email address</Label>
+              <Label htmlFor="email">Email address *</Label>
               <Input
                 id="email"
                 type="email"
@@ -193,7 +200,7 @@ export default function Register() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="phone">Phone number</Label>
+              <Label htmlFor="phone">Phone number *</Label>
               <Input
                 id="phone"
                 type="tel"
@@ -205,46 +212,57 @@ export default function Register() {
               />
             </div>
 
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="gender">Gender</Label>
+                <Select value={gender} onValueChange={setGender}>
+                  <SelectTrigger className="h-10" id="gender">
+                    <SelectValue placeholder="Select gender" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {genderOptions.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="disabilityType">Disability type</Label>
+                <Select value={disabilityType} onValueChange={setDisabilityType}>
+                  <SelectTrigger className="h-10" id="disabilityType">
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {disabilityTypeOptions.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
             <div className="space-y-2">
-              <Label htmlFor="region">Region</Label>
-              <Select value={region} onValueChange={setRegion}>
-                <SelectTrigger className="h-10">
-                  <SelectValue placeholder="Select your region" />
+              <Label htmlFor="membershipType">Membership type</Label>
+              <Select value={membershipTypeId} onValueChange={setMembershipTypeId}>
+                <SelectTrigger className="h-10" id="membershipType">
+                  <SelectValue placeholder="Select membership type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="greater-accra">Greater Accra</SelectItem>
-                  <SelectItem value="ashanti">Ashanti</SelectItem>
-                  <SelectItem value="western">Western</SelectItem>
-                  <SelectItem value="central">Central</SelectItem>
-                  <SelectItem value="eastern">Eastern</SelectItem>
-                  <SelectItem value="northern">Northern</SelectItem>
-                  <SelectItem value="upper-east">Upper East</SelectItem>
-                  <SelectItem value="upper-west">Upper West</SelectItem>
-                  <SelectItem value="volta">Volta</SelectItem>
-                  <SelectItem value="bono">Bono</SelectItem>
-                  <SelectItem value="bono-east">Bono East</SelectItem>
-                  <SelectItem value="ahafo">Ahafo</SelectItem>
-                  <SelectItem value="north-east">North East</SelectItem>
-                  <SelectItem value="savannah">Savannah</SelectItem>
-                  <SelectItem value="oti">Oti</SelectItem>
-                  <SelectItem value="western-north">Western North</SelectItem>
+                  {membershipTypes?.map((type) => (
+                    <SelectItem key={type.id} value={type.id}>
+                      {type.name} — GHS {type.annual_dues.toFixed(2)}/yr
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="businessType">Type of business</Label>
-              <Input
-                id="businessType"
-                placeholder="e.g., Retail, Agriculture, Services"
-                className="h-10"
-                value={businessType}
-                onChange={(e) => setBusinessType(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">Password *</Label>
               <div className="relative">
                 <Input
                   id="password"
@@ -259,11 +277,12 @@ export default function Register() {
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
+                    <EyeOff className="h-4 w-4" aria-hidden="true" />
                   ) : (
-                    <Eye className="h-4 w-4" />
+                    <Eye className="h-4 w-4" aria-hidden="true" />
                   )}
                 </button>
               </div>
@@ -280,7 +299,7 @@ export default function Register() {
                   "Creating account..."
                 ) : (
                   <>
-                    <UserPlus className="mr-2 h-4 w-4" />
+                    <UserPlus className="mr-2 h-4 w-4" aria-hidden="true" />
                     Create account
                   </>
                 )}

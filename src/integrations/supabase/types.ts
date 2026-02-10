@@ -239,6 +239,7 @@ export type Database = {
           disability_type: Database["public"]["Enums"]["disability_type"] | null
           email: string
           full_name: string
+          gender: string | null
           id: string
           is_public_directory: boolean
           membership_expiry_date: string | null
@@ -264,6 +265,7 @@ export type Database = {
             | null
           email: string
           full_name: string
+          gender?: string | null
           id?: string
           is_public_directory?: boolean
           membership_expiry_date?: string | null
@@ -289,6 +291,7 @@ export type Database = {
             | null
           email?: string
           full_name?: string
+          gender?: string | null
           id?: string
           is_public_directory?: boolean
           membership_expiry_date?: string | null

@@ -4,14 +4,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useProfile, Profile } from "@/hooks/useProfile";
+import { useProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { ghanaRegions, disabilityTypes, businessTypes } from "@/lib/ghanaRegions";
+import { ghanaRegions, disabilityTypeOptions, businessTypes, genderOptions } from "@/lib/ghanaRegions";
 import { Camera, Loader2, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -30,7 +29,6 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-// Ghana phone number regex: supports +233XXXXXXXXX, 233XXXXXXXXX, 0XXXXXXXXX formats
 const ghanaPhoneRegex = /^(\+233|233|0)?[0-9]{9,10}$/;
 
 const profileSchema = z.object({
@@ -45,6 +43,7 @@ const profileSchema = z.object({
     )
     .optional()
     .or(z.literal("")),
+  gender: z.string().optional().or(z.literal("")),
   business_name: z.string()
     .max(200, "Business name must be less than 200 characters")
     .optional()
@@ -84,6 +83,7 @@ export function ProfileForm() {
     defaultValues: {
       full_name: "",
       phone: "",
+      gender: "",
       business_name: "",
       business_type: "",
       disability_type: "",
@@ -97,6 +97,7 @@ export function ProfileForm() {
       form.reset({
         full_name: profile.full_name || "",
         phone: profile.phone || "",
+        gender: (profile as any).gender || "",
         business_name: profile.business_name || "",
         business_type: profile.business_type || "",
         disability_type: profile.disability_type || "",
@@ -126,12 +127,13 @@ export function ProfileForm() {
         .update({
           full_name: data.full_name,
           phone: data.phone || null,
+          gender: data.gender || null,
           business_name: data.business_name || null,
           business_type: data.business_type || null,
           disability_type: data.disability_type as any || null,
           region: data.region || null,
           city: data.city || null,
-        })
+        } as any)
         .eq("user_id", user.id);
 
       if (error) throw error;
@@ -167,16 +169,12 @@ export function ProfileForm() {
 
       if (uploadError) throw uploadError;
 
-      // Security: Use signed URL for private bucket instead of public URL
-      // Store the file path in the database, and generate signed URLs when needed
       const { data: signedUrlData, error: urlError } = await supabase.storage
         .from("avatars")
-        .createSignedUrl(filePath, 60 * 60 * 24 * 7); // 7 days expiry
+        .createSignedUrl(filePath, 60 * 60 * 24 * 7);
 
       if (urlError) throw urlError;
 
-      // Store the file path (not the full URL) for regenerating signed URLs later
-      // For now, store the signed URL - can be refreshed on profile load
       const avatarPath = filePath;
       
       const { error: updateError } = await supabase
@@ -216,15 +214,16 @@ export function ProfileForm() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="flex items-center justify-center py-12" role="status">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" aria-hidden="true" />
+        <span className="sr-only">Loading profile...</span>
       </div>
     );
   }
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6" aria-label="Edit profile">
         {/* Avatar Section */}
         <Card>
           <CardHeader>
@@ -234,7 +233,7 @@ export function ProfileForm() {
             <div className="flex items-center gap-6">
               <div className="relative">
                 <Avatar className="h-24 w-24">
-                  <AvatarImage src={avatarUrl || undefined} />
+                  <AvatarImage src={avatarUrl || undefined} alt={`${profile?.full_name}'s profile photo`} />
                   <AvatarFallback className="bg-primary text-primary-foreground text-2xl">
                     {initials}
                   </AvatarFallback>
@@ -242,11 +241,12 @@ export function ProfileForm() {
                 <label
                   htmlFor="avatar-upload"
                   className="absolute -bottom-2 -right-2 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-accent text-accent-foreground shadow-lg transition-transform hover:scale-110"
+                  aria-label="Upload new profile photo"
                 >
                   {uploading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
                   ) : (
-                    <Camera className="h-4 w-4" />
+                    <Camera className="h-4 w-4" aria-hidden="true" />
                   )}
                 </label>
                 <input
@@ -256,6 +256,7 @@ export function ProfileForm() {
                   className="hidden"
                   onChange={handleAvatarUpload}
                   disabled={uploading}
+                  aria-label="Choose profile photo file"
                 />
               </div>
               <div>
@@ -303,6 +304,30 @@ export function ProfileForm() {
             />
             <FormField
               control={form.control}
+              name="gender"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Gender</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select gender" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {genderOptions.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
               name="disability_type"
               render={({ field }) => (
                 <FormItem>
@@ -314,9 +339,9 @@ export function ProfileForm() {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {disabilityTypes.map((type) => (
-                        <SelectItem key={type} value={type}>
-                          {type}
+                      {disabilityTypeOptions.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -450,12 +475,12 @@ export function ProfileForm() {
           >
             {updateProfileMutation.isPending ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
                 Saving...
               </>
             ) : (
               <>
-                <Save className="mr-2 h-4 w-4" />
+                <Save className="mr-2 h-4 w-4" aria-hidden="true" />
                 Save Changes
               </>
             )}

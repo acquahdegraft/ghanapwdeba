@@ -7,7 +7,7 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signUp: (email: string, password: string, metadata?: { full_name?: string; phone?: string }) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, metadata?: Record<string, string | undefined>) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -46,7 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error };
   };
 
-  const signUp = async (email: string, password: string, metadata?: { full_name?: string; phone?: string }) => {
+  const signUp = async (email: string, password: string, metadata?: Record<string, string | undefined>) => {
     const redirectUrl = `${window.location.origin}/verify-email`;
     
     const { error } = await supabase.auth.signUp({
