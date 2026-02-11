@@ -1,6 +1,7 @@
-import { CheckCircle, Download, ArrowUpRight, Clock, XCircle, AlertCircle } from "lucide-react";
+import { CheckCircle, Download, ArrowUpRight, Clock, XCircle, AlertCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePayments, Payment } from "@/hooks/usePayments";
+import { usePaymentSync } from "@/hooks/usePaymentSync";
 import { format, parseISO } from "date-fns";
 
 function StatusBadge({ status }: { status: string }) {
@@ -51,6 +52,7 @@ function formatPaymentType(type: string): string {
 
 export function PaymentHistoryTable() {
   const { data: payments, isLoading } = usePayments();
+  const { isSyncing } = usePaymentSync(payments);
 
   const handleExport = () => {
     if (!payments?.length) return;
@@ -82,16 +84,24 @@ export function PaymentHistoryTable() {
             Your recent transactions and payment records
           </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleExport}
-          disabled={!payments?.length}
-          aria-label="Export payment history as CSV"
-        >
-          <Download className="mr-2 h-4 w-4" aria-hidden="true" />
-          Export
-        </Button>
+        <div className="flex items-center gap-2">
+          {isSyncing && (
+            <div className="flex items-center gap-1.5 text-sm text-muted-foreground" role="status" aria-live="polite">
+              <RefreshCw className="h-4 w-4 animate-spin" aria-hidden="true" />
+              <span>Syncing with payment provider...</span>
+            </div>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExport}
+            disabled={!payments?.length}
+            aria-label="Export payment history as CSV"
+          >
+            <Download className="mr-2 h-4 w-4" aria-hidden="true" />
+            Export
+          </Button>
+        </div>
       </div>
 
       <div className="overflow-x-auto">
