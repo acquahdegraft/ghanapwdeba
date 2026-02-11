@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_permissions: {
+        Row: {
+          created_at: string
+          id: string
+          permission: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          permission: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          permission?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       announcements: {
         Row: {
           content: string
@@ -364,21 +385,27 @@ export type Database = {
       user_roles: {
         Row: {
           created_at: string
+          district: string | null
           id: string
+          region: string | null
           role: Database["public"]["Enums"]["app_role"]
           updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
+          district?: string | null
           id?: string
+          region?: string | null
           role?: Database["public"]["Enums"]["app_role"]
           updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
+          district?: string | null
           id?: string
+          region?: string | null
           role?: Database["public"]["Enums"]["app_role"]
           updated_at?: string
           user_id?: string
@@ -550,6 +577,18 @@ export type Database = {
       }
     }
     Functions: {
+      get_user_role_details: {
+        Args: { _user_id: string }
+        Returns: {
+          district: string
+          region: string
+          role: Database["public"]["Enums"]["app_role"]
+        }[]
+      }
+      has_permission: {
+        Args: { _permission: string; _user_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -560,7 +599,12 @@ export type Database = {
       is_admin: { Args: never; Returns: boolean }
     }
     Enums: {
-      app_role: "member" | "admin" | "super_admin"
+      app_role:
+        | "member"
+        | "admin"
+        | "super_admin"
+        | "regional_coordinator"
+        | "district_coordinator"
       disability_type:
         | "physical"
         | "visual"
@@ -698,7 +742,13 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["member", "admin", "super_admin"],
+      app_role: [
+        "member",
+        "admin",
+        "super_admin",
+        "regional_coordinator",
+        "district_coordinator",
+      ],
       disability_type: [
         "physical",
         "visual",

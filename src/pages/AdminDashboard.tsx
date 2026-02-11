@@ -9,7 +9,8 @@ import { AnnouncementsManagement } from "@/components/admin/AnnouncementsManagem
 import { EventsManagement } from "@/components/admin/EventsManagement";
 import { ResourcesManagement } from "@/components/admin/ResourcesManagement";
 import { useAllMembers, useAllPayments } from "@/hooks/useAdminData";
-import { Users, CreditCard, DollarSign, Megaphone, Calendar, BarChart3, FileText } from "lucide-react";
+import { RoleManagement } from "@/components/admin/RoleManagement";
+import { Users, CreditCard, DollarSign, Megaphone, Calendar, BarChart3, FileText, Shield } from "lucide-react";
 
 export default function AdminDashboard() {
   // Admin access is enforced at route level via ProtectedRoute requireAdmin
@@ -58,6 +59,10 @@ export default function AdminDashboard() {
             <Megaphone className="h-4 w-4" />
             <span>Announcements</span>
           </TabsTrigger>
+          <TabsTrigger value="roles" className="flex items-center gap-2 px-3 py-2">
+            <Shield className="h-4 w-4" />
+            <span>Roles & Permissions</span>
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="analytics">
@@ -86,6 +91,10 @@ export default function AdminDashboard() {
 
         <TabsContent value="announcements">
           <AnnouncementsManagement />
+        </TabsContent>
+
+        <TabsContent value="roles">
+          <RoleManagement />
         </TabsContent>
       </Tabs>
     </DashboardLayout>
