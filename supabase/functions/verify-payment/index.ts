@@ -159,8 +159,9 @@ serve(async (req) => {
     const verifyData = await verifyResponse.json();
     console.log("Hubtel verification response:", JSON.stringify(verifyData));
 
-    // Check if we got a valid response
-    if (verifyData.ResponseCode !== "0000") {
+    // Check if we got a valid response (handle both PascalCase and camelCase from Hubtel)
+    const responseCode = verifyData.ResponseCode || verifyData.responseCode;
+    if (responseCode !== "0000") {
       console.error("Hubtel verification failed:", JSON.stringify(verifyData));
       return new Response(
         JSON.stringify({ 
@@ -179,9 +180,11 @@ serve(async (req) => {
       );
     }
 
-    // Map Hubtel status to our status
-    // Hubtel statuses: Success, Failed, Pending
-    const hubtelStatus = verifyData.Data?.Status?.toLowerCase() || "pending";
+    // Map Hubtel status to our status (handle both PascalCase and camelCase)
+    // Hubtel statuses: "Paid"/"Success", "Unpaid"/"Failed", "Pending"
+    const hubtelStatusData = verifyData.Data || verifyData.data;
+    const rawStatus = (hubtelStatusData?.Status || hubtelStatusData?.status || "pending").toLowerCase();
+    const hubtelStatus = rawStatus === "paid" ? "success" : rawStatus;
     const paymentStatus = hubtelStatus === "success" ? "completed" : 
                           hubtelStatus === "failed" ? "failed" : "pending";
 
@@ -192,7 +195,7 @@ serve(async (req) => {
         .update({
           status: paymentStatus,
           payment_date: paymentStatus === "completed" ? new Date().toISOString() : null,
-          notes: `Payment ${paymentStatus}. Hubtel Ref: ${verifyData.Data?.TransactionId || reference}`,
+          notes: `Payment ${paymentStatus}. Hubtel Ref: ${hubtelStatusData?.TransactionId || hubtelStatusData?.transactionId || reference}`,
         })
         .eq("transaction_reference", reference);
 
@@ -257,7 +260,7 @@ serve(async (req) => {
         status: paymentStatus,
         amount: paymentRecord.amount,
         reference: reference,
-        hubtel_transaction_id: verifyData.Data?.TransactionId,
+        hubtel_transaction_id: hubtelStatusData?.TransactionId || hubtelStatusData?.transactionId,
       }),
       { 
         status: 200, 

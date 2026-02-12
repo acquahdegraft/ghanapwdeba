@@ -26,6 +26,7 @@ import MemberProfile from "./pages/MemberProfile";
 import Events from "./pages/Events";
 import Resources from "./pages/Resources";
 import AdminDashboard from "./pages/AdminDashboard";
+import CoordinatorDashboard from "./pages/CoordinatorDashboard";
 import PaymentCallback from "./pages/PaymentCallback";
 import NotFound from "./pages/NotFound";
 
@@ -89,6 +90,14 @@ const App = () => (
               element={
                 <ProtectedRoute requireAdmin>
                   <AdminDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/coordinator"
+              element={
+                <ProtectedRoute>
+                  <CoordinatorDashboard />
                 </ProtectedRoute>
               }
             />

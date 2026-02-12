@@ -22,13 +22,15 @@ export default function PaymentCallback() {
     const checkPaymentStatus = async () => {
       // Get status from URL params
       const paymentStatus = searchParams.get("payment");
-      const clientReference = searchParams.get("clientReference");
+      // Support both 'clientReference' and 'reference' query params
+      const clientReference = searchParams.get("clientReference") || searchParams.get("reference");
       const hubtelStatus = searchParams.get("status");
       
       setReference(clientReference);
 
-      // Hubtel sends status in the return URL
-      if (hubtelStatus === "Success" || paymentStatus === "success") {
+      // Hubtel sends status in the return URL (case-insensitive check)
+      const normalizedStatus = (hubtelStatus || "").toLowerCase();
+      if (normalizedStatus === "success" || paymentStatus === "success") {
         // Verify with our backend
         if (clientReference) {
           try {
@@ -61,9 +63,9 @@ export default function PaymentCallback() {
           queryClient.invalidateQueries({ queryKey: ["payments"] });
           queryClient.invalidateQueries({ queryKey: ["profile"] });
         }
-      } else if (hubtelStatus === "Cancelled" || paymentStatus === "cancelled") {
+      } else if (normalizedStatus === "cancelled" || paymentStatus === "cancelled") {
         setStatus("cancelled");
-      } else if (hubtelStatus === "Failed" || paymentStatus === "failed") {
+      } else if (normalizedStatus === "failed" || paymentStatus === "failed") {
         setStatus("failed");
       } else {
         // Default to pending if we can't determine status

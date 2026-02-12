@@ -11,11 +11,13 @@ import {
   ChevronRight,
   Shield,
   Users,
+  MapPin,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { useAdminRole } from "@/hooks/useAdminRole";
+import { useCoordinatorRole } from "@/hooks/useCoordinatorData";
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -40,6 +42,7 @@ export function DashboardSidebar() {
   const { signOut } = useAuth();
   const { data: profile } = useProfile();
   const { data: isAdmin } = useAdminRole();
+  const { data: coordRole } = useCoordinatorRole();
 
   const displayName = profile?.full_name || "Member";
   const initials = displayName
@@ -98,13 +101,13 @@ export function DashboardSidebar() {
           );
         })}
 
-        {/* Admin Navigation */}
-        {isAdmin && (
+        {/* Admin / Coordinator Navigation */}
+        {(isAdmin || coordRole) && (
           <>
             <div className="mb-2 mt-8 px-3 text-xs font-medium uppercase tracking-wider text-sidebar-muted">
               Admin
             </div>
-            {adminNav.map((item) => {
+            {isAdmin && adminNav.map((item) => {
               const isActive = location.pathname === item.href;
               return (
                 <Link
@@ -130,6 +133,28 @@ export function DashboardSidebar() {
                 </Link>
               );
             })}
+            {coordRole && (
+              <Link
+                to="/dashboard/coordinator"
+                className={cn(
+                  "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                  location.pathname === "/dashboard/coordinator"
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                    : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                )}
+              >
+                <MapPin
+                  className={cn(
+                    "h-5 w-5 transition-colors",
+                    location.pathname === "/dashboard/coordinator" ? "text-sidebar-primary" : "text-sidebar-muted group-hover:text-sidebar-foreground"
+                  )}
+                />
+                <span className="flex-1">My Area</span>
+                {location.pathname === "/dashboard/coordinator" && (
+                  <ChevronRight className="h-4 w-4 text-sidebar-primary" />
+                )}
+              </Link>
+            )}
           </>
         )}
 
