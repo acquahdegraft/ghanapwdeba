@@ -46,7 +46,7 @@ const Index = () => {
           <div className="mx-auto max-w-3xl text-center">
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border bg-card px-4 py-1.5 text-sm">
               <span className="flex h-2 w-2 rounded-full bg-success animate-pulse-soft" />
-              Now accepting new members for 2025
+              Now accepting new members for 2026
             </div>
             <h1 className="mb-6 text-4xl font-bold tracking-tight md:text-5xl lg:text-6xl">
               Empowering{" "}
@@ -56,8 +56,8 @@ const Index = () => {
               Across Ghana
             </h1>
             <p className="mb-8 text-lg text-muted-foreground md:text-xl">
-              Ghana Persons with Disabilities Entrepreneurs and Business Association — 
-              fostering unity, breaking barriers, and creating equal opportunities in business.
+              Ghana Persons with Disabilities Entrepreneurs and Business Association — fostering unity, breaking
+              barriers, and creating equal opportunities in business.
             </p>
             <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
               <Button size="lg" asChild className="h-12 px-8 gradient-primary">
@@ -123,17 +123,11 @@ const Index = () => {
       {/* CTA Section */}
       <section className="gradient-primary py-16">
         <div className="container mx-auto px-4 text-center">
-          <h2 className="mb-4 text-3xl font-bold text-primary-foreground">
-            Ready to Join Our Community?
-          </h2>
+          <h2 className="mb-4 text-3xl font-bold text-primary-foreground">Ready to Join Our Community?</h2>
           <p className="mb-8 text-primary-foreground/80">
             Start your membership application today and connect with fellow PWD entrepreneurs.
           </p>
-          <Button
-            size="lg"
-            asChild
-            className="h-12 bg-primary-foreground text-primary hover:bg-primary-foreground/90"
-          >
+          <Button size="lg" asChild className="h-12 bg-primary-foreground text-primary hover:bg-primary-foreground/90">
             <Link to="/register">
               Apply for Membership
               <ArrowRight className="ml-2 h-4 w-4" />
