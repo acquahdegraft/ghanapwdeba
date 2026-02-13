@@ -1,19 +1,19 @@
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { PaymentCard } from "@/components/dashboard/PaymentCard";
-import { MembershipStatusCard } from "@/components/dashboard/MembershipStatusCard";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { EventsWidget } from "@/components/dashboard/EventsWidget";
 import { AnnouncementsBanner } from "@/components/dashboard/AnnouncementsBanner";
-import { CreditCard, Calendar, FileText, Users } from "lucide-react";
+import { CreditCard, Calendar, FileText, Users, MapPin, Briefcase, Phone, Mail } from "lucide-react";
 import { useProfile } from "@/hooks/useProfile";
 import { usePayments } from "@/hooks/usePayments";
 import { useMemberDues } from "@/hooks/useMemberDues";
 import { format, differenceInDays, parseISO } from "date-fns";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default function Dashboard() {
-  const { data: profile, isLoading: profileLoading } = useProfile();
-  const { data: payments, isLoading: paymentsLoading } = usePayments();
+  const { data: profile } = useProfile();
+  const { data: payments } = usePayments();
   const { duesAmount, membershipTypeName } = useMemberDues();
 
   const firstName = profile?.full_name?.split(" ")[0] || "Member";
@@ -91,14 +91,50 @@ export default function Dashboard() {
             status={lastPayment?.status === "completed" ? "paid" : "pending"}
             paidDate={lastPayment?.payment_date ? format(parseISO(lastPayment.payment_date), "MMM d, yyyy") : undefined}
           />
-          <MembershipStatusCard
-            memberSince={memberSince}
-            expiryDate={expiryFormatted}
-            membershipLevel={membershipTypeName}
-            memberNumber={`GPWDEBA-${profile?.id?.slice(0, 8).toUpperCase() || "XXXXXXXX"}`}
-            daysRemaining={daysRemaining}
-            totalDays={365}
-          />
+          {/* Profile Info Card */}
+          <div className="rounded-xl border bg-card p-6">
+            <div className="mb-5 flex items-center gap-4">
+              <Avatar className="h-16 w-16">
+                <AvatarImage src={profile?.avatar_url || undefined} alt={profile?.full_name || "Member"} />
+                <AvatarFallback className="bg-primary text-primary-foreground text-lg">
+                  {profile?.full_name?.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() || "M"}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <p className="text-lg font-bold">{profile?.full_name || "Member"}</p>
+                <p className="text-sm text-muted-foreground">{membershipTypeName}</p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 text-sm">
+                <Mail className="h-4 w-4 text-muted-foreground" />
+                <span className="text-muted-foreground">{profile?.email || "—"}</span>
+              </div>
+              <div className="flex items-center gap-3 text-sm">
+                <Phone className="h-4 w-4 text-muted-foreground" />
+                <span className="text-muted-foreground">{profile?.phone || "—"}</span>
+              </div>
+              {profile?.business_name && (
+                <div className="flex items-center gap-3 text-sm">
+                  <Briefcase className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">{profile.business_name}</span>
+                </div>
+              )}
+              {(profile?.region || profile?.city) && (
+                <div className="flex items-center gap-3 text-sm">
+                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">
+                    {[profile?.city, profile?.region].filter(Boolean).join(", ")}
+                  </span>
+                </div>
+              )}
+              <div className="flex items-center gap-3 text-sm">
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <span className="text-muted-foreground">Member since {memberSince}</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Middle Column - Events */}
