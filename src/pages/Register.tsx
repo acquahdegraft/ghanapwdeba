@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Eye, EyeOff, UserPlus, ArrowLeft, Check } from "lucide-react";
+import { Eye, EyeOff, UserPlus, ArrowLeft, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +11,7 @@ import { PasswordStrengthIndicator } from "@/components/auth/PasswordStrengthInd
 import { toast } from "sonner";
 import { z } from "zod";
 import { disabilityTypeOptions, genderOptions } from "@/lib/ghanaRegions";
+import { supabase } from "@/integrations/supabase/client";
 
 const benefits = [
   "Access to business development resources",
@@ -75,9 +76,8 @@ export default function Register() {
       membership_type_id: membershipTypeId || undefined,
     });
     
-    setIsLoading(false);
-    
     if (error) {
+      setIsLoading(false);
       if (error.message.includes("already registered")) {
         toast.error("This email is already registered. Please sign in instead.");
       } else {
@@ -86,10 +86,47 @@ export default function Register() {
       return;
     }
     
-    toast.success("Please check your email to verify your account before signing in.", {
-      duration: 8000,
-    });
-    navigate("/login");
+    // Initiate registration payment via Hubtel
+    toast.info("Registration successful! Redirecting to payment...", { duration: 5000 });
+    
+    try {
+      // Small delay to allow the profile trigger to create the profile record
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      
+      const { data, error: fnError } = await supabase.functions.invoke(
+        "initiate-registration-payment",
+        {
+          body: {
+            email,
+            fullName: `${firstName} ${lastName}`,
+            phone,
+          },
+        }
+      );
+
+      if (fnError || !data?.checkoutUrl) {
+        console.error("Registration payment error:", fnError || data);
+        toast.warning(
+          "Account created! Please check your email to verify, then log in to complete payment.",
+          { duration: 8000 }
+        );
+        navigate("/login");
+        return;
+      }
+
+      // Redirect to Hubtel checkout
+      toast.success("Redirecting to payment gateway...", { duration: 3000 });
+      window.location.href = data.checkoutUrl;
+    } catch (paymentError) {
+      console.error("Payment initiation failed:", paymentError);
+      toast.warning(
+        "Account created! Please check your email to verify, then log in to complete payment.",
+        { duration: 8000 }
+      );
+      navigate("/login");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -296,11 +333,14 @@ export default function Register() {
                 disabled={isLoading}
               >
                 {isLoading ? (
-                  "Creating account..."
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+                    Creating account...
+                  </>
                 ) : (
                   <>
                     <UserPlus className="mr-2 h-4 w-4" aria-hidden="true" />
-                    Create account
+                    Create account & Pay Registration Fee
                   </>
                 )}
               </Button>
