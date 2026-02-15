@@ -17,6 +17,7 @@ export default function PaymentCallback() {
   const [reference, setReference] = useState<string | null>(null);
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
   const [lastChecked, setLastChecked] = useState<Date | null>(null);
+  const isRegistration = searchParams.get("type") === "registration";
 
   useEffect(() => {
     const checkPaymentStatus = async () => {
@@ -115,11 +116,11 @@ export default function PaymentCallback() {
   };
 
   const handleGoToPayments = () => {
-    navigate("/dashboard/payments");
+    navigate(isRegistration ? "/login" : "/dashboard/payments");
   };
 
   const handleTryAgain = () => {
-    navigate("/dashboard/payments");
+    navigate(isRegistration ? "/register" : "/dashboard/payments");
   };
 
   return (
@@ -144,7 +145,9 @@ export default function PaymentCallback() {
               <div>
                 <h2 className="text-2xl font-bold text-success">Payment Successful!</h2>
                 <p className="text-muted-foreground mt-2">
-                  Your membership dues have been paid successfully. Your account has been activated.
+                  {isRegistration
+                    ? "Your registration fee has been paid successfully. Please check your email to verify your account, then sign in."
+                    : "Your membership dues have been paid successfully. Your account has been activated."}
                 </p>
                 {reference && (
                   <p className="text-sm text-muted-foreground mt-2">
@@ -153,7 +156,7 @@ export default function PaymentCallback() {
                 )}
               </div>
               <Button onClick={handleGoToPayments} className="w-full mt-4">
-                View Payment History
+                {isRegistration ? "Go to Sign In" : "View Payment History"}
               </Button>
             </div>
           )}
@@ -199,7 +202,7 @@ export default function PaymentCallback() {
                   )}
                 </Button>
                 <Button onClick={handleGoToPayments} variant="outline" className="w-full">
-                  Go to Payment History
+                  {isRegistration ? "Go to Sign In" : "Go to Payment History"}
                 </Button>
               </div>
             </div>

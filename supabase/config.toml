@@ -65,3 +65,13 @@ verify_jwt = false
 # Checks transaction status directly with Hubtel API
 # Manually verifies JWT and user ownership of payment
 verify_jwt = false
+
+[functions.check-email-exists]
+# Public endpoint to check if email is already registered
+# No JWT needed - only returns boolean, no sensitive data
+verify_jwt = false
+
+[functions.initiate-registration-payment]
+# Post-registration payment initiation (unauthenticated)
+# Security: validates email matches profile created within 10 minutes
+verify_jwt = false

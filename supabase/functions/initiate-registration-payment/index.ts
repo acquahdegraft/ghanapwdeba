@@ -110,8 +110,8 @@ serve(async (req) => {
 
     const basicAuth = `Basic ${btoa(`${clientId}:${clientSecret}`)}`;
     const frontendUrl = req.headers.get("origin") || "https://ghanapwdeba.lovable.app";
-    const returnUrl = `${frontendUrl}/dashboard/payment-callback?reference=${clientReference}&status=success`;
-    const cancellationUrl = `${frontendUrl}/dashboard/payment-callback?reference=${clientReference}&status=cancelled`;
+    const returnUrl = `${frontendUrl}/payment-callback?reference=${clientReference}&payment=success&type=registration`;
+    const cancellationUrl = `${frontendUrl}/payment-callback?reference=${clientReference}&payment=cancelled&type=registration`;
     const callbackUrl = `${supabaseUrl}/functions/v1/hubtel-callback`;
 
     // Format phone
