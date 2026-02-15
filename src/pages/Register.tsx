@@ -67,6 +67,20 @@ export default function Register() {
     }
 
     setIsLoading(true);
+
+    // Check if email is already registered
+    try {
+      const { data: emailCheck } = await supabase.functions.invoke("check-email-exists", {
+        body: { email: email.trim().toLowerCase() },
+      });
+      if (emailCheck?.exists) {
+        toast.error("This email is already registered. Please sign in instead.");
+        setIsLoading(false);
+        return;
+      }
+    } catch {
+      // Continue with registration if check fails
+    }
     
     const { error } = await signUp(email, password, {
       full_name: `${firstName} ${lastName}`,

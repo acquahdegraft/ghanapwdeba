@@ -77,6 +77,8 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            {/* Public payment callback for registration payments (user not yet logged in) */}
+            <Route path="/payment-callback" element={<PaymentCallback />} />
             <Route
               path="/dashboard/profile"
               element={
