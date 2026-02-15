@@ -70,7 +70,7 @@ serve(async (req) => {
     }
 
     const amount = standardType.annual_dues;
-    const clientReference = `REG-${profile.user_id}-${Date.now()}`;
+    const clientReference = `REG-${profile.user_id.substring(0, 8)}-${Date.now()}`;
     const webhookToken = generateWebhookToken();
 
     // Create pending payment record
