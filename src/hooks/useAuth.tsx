@@ -47,7 +47,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signUp = async (email: string, password: string, metadata?: Record<string, string | undefined>) => {
-    const redirectUrl = `${window.location.origin}/verify-email`;
+    const publishedUrl = "https://ghanapwdeba.lovable.app";
+    const redirectUrl = `${publishedUrl}/verify-email`;
     
     const { error } = await supabase.auth.signUp({
       email,
