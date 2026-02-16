@@ -220,10 +220,10 @@ serve(async (req) => {
       bodyPreview: responseText.substring(0, 500)
     });
 
-    // Parse response
-    let hubtelData: HubtelStatusResponse;
+    // Parse response - Hubtel uses PascalCase fields
+    let rawHubtelData: Record<string, unknown>;
     try {
-      hubtelData = JSON.parse(responseText);
+      rawHubtelData = JSON.parse(responseText);
     } catch (parseError) {
       console.error("Failed to parse Hubtel response:", parseError);
       return new Response(
@@ -236,44 +236,53 @@ serve(async (req) => {
       );
     }
 
-    console.log("Hubtel status API parsed response:", JSON.stringify(hubtelData));
+    console.log("Hubtel status API parsed response:", JSON.stringify(rawHubtelData));
 
+    // Handle PascalCase and camelCase response fields
+    const responseCode = (rawHubtelData.ResponseCode || rawHubtelData.responseCode) as string;
+    const responseMessage = (rawHubtelData.Message || rawHubtelData.message) as string | undefined;
+    
     // Build result
     const result: StatusCheckResult = {
-      success: hubtelData.responseCode === "0000",
+      success: responseCode === "0000",
       clientReference: clientReference,
       status: "unknown",
-      message: hubtelData.message,
+      message: responseMessage,
     };
 
-    if (hubtelData.responseCode === "0000" && hubtelData.data) {
-      const data = hubtelData.data;
+    // Hubtel RMSC returns Data as an ARRAY of transactions
+    const rawData = rawHubtelData.Data || rawHubtelData.data;
+    const txnData = Array.isArray(rawData) ? rawData[0] : rawData;
+
+    if (responseCode === "0000" && txnData) {
+      const data = txnData as Record<string, unknown>;
       
       // Map Hubtel status to our internal status
-      // Hubtel returns: "Paid", "Unpaid", "Refunded"
-      const hubtelStatus = data.status?.toLowerCase() || "";
-      result.hubtelStatus = data.status;
+      // RMSC returns: "Success"/"Failed"/"Pending" in TransactionStatus or InvoiceStatus
+      // Standard API returns: "Paid"/"Unpaid"/"Refunded" in status
+      const transactionStatus = ((data.TransactionStatus || data.transactionStatus || data.InvoiceStatus || data.invoiceStatus || data.Status || data.status || "") as string).toLowerCase();
+      result.hubtelStatus = (data.TransactionStatus || data.transactionStatus || data.InvoiceStatus || data.invoiceStatus || data.Status || data.status) as string;
       
-      if (hubtelStatus === "paid") {
+      if (transactionStatus === "paid" || transactionStatus === "success") {
         result.status = "completed";
-      } else if (hubtelStatus === "unpaid") {
+      } else if (transactionStatus === "unpaid" || transactionStatus === "pending") {
         result.status = "pending";
-      } else if (hubtelStatus === "refunded") {
-        result.status = "failed"; // Treat refunded as failed for our purposes
+      } else if (transactionStatus === "refunded" || transactionStatus === "failed") {
+        result.status = "failed";
       } else {
         result.status = "unknown";
       }
 
-      // Add transaction details from official API response
-      result.transactionId = data.transactionId;
-      result.externalTransactionId = data.externalTransactionId;
-      result.amount = data.amount;
-      result.charges = data.charges;
-      result.amountAfterCharges = data.amountAfterCharges;
-      result.paymentMethod = data.paymentMethod;
-      result.currencyCode = data.currencyCode;
-      result.transactionDate = data.date;
-      result.isFulfilled = data.isFulfilled;
+      // Add transaction details - handle both PascalCase and camelCase
+      result.transactionId = (data.TransactionId || data.transactionId || data.CheckoutId || data.checkoutId) as string | undefined;
+      result.externalTransactionId = (data.NetworkTransactionId || data.externalTransactionId) as string | undefined;
+      result.amount = (data.TransactionAmount || data.amount) as number | undefined;
+      result.charges = (data.Fee || data.charges) as number | undefined;
+      result.amountAfterCharges = (data.AmountAfterFees || data.amountAfterCharges) as number | undefined;
+      result.paymentMethod = (data.PaymentMethod || data.paymentMethod) as string | undefined;
+      result.currencyCode = (data.CurrencyCode || data.currencyCode) as string | null | undefined;
+      result.transactionDate = (data.StartDate || data.date) as string | undefined;
+      result.isFulfilled = (data.isFulfilled) as boolean | null | undefined;
       result.timestamp = new Date().toISOString();
 
       // Sync database if payment is confirmed as Paid and not already completed
@@ -288,19 +297,22 @@ serve(async (req) => {
 
         const updateData: Record<string, unknown> = {
           status: "completed",
-          payment_date: data.date || new Date().toISOString(),
+          payment_date: (data.StartDate || data.date || new Date().toISOString()) as string,
           webhook_token: null, // Clear webhook token after successful payment
           updated_at: new Date().toISOString(),
         };
 
         // Add payment method if available
-        if (data.paymentMethod) {
-          updateData.payment_method = data.paymentMethod;
+        const paymentMethod = (data.PaymentMethod || data.paymentMethod) as string | undefined;
+        if (paymentMethod) {
+          updateData.payment_method = paymentMethod;
         }
 
         // Add transaction ID to notes if available
-        if (data.transactionId || data.externalTransactionId) {
-          updateData.notes = `Hubtel TxnID: ${data.transactionId || "N/A"}, External TxnID: ${data.externalTransactionId || "N/A"}`;
+        const txnId = (data.TransactionId || data.transactionId) as string | undefined;
+        const extTxnId = (data.NetworkTransactionId || data.externalTransactionId) as string | undefined;
+        if (txnId || extTxnId) {
+          updateData.notes = `Hubtel TxnID: ${txnId || "N/A"}, External TxnID: ${extTxnId || "N/A"}`;
         }
 
         const { error: updateError } = await supabaseServiceRole
