@@ -101,8 +101,8 @@ serve(async (req) => {
     }
 
     // Construct return and cancellation URLs
-    // These should point to the frontend callback page
-    const frontendUrl = req.headers.get("origin") || "https://ghanapwdeba.lovable.app";
+    // Always use the published URL so redirects work correctly
+    const frontendUrl = "https://ghanapwdeba.lovable.app";
     const returnUrl = `${frontendUrl}/dashboard/payment-callback?reference=${clientReference}&status=success`;
     const cancellationUrl = `${frontendUrl}/dashboard/payment-callback?reference=${clientReference}&status=cancelled`;
 
