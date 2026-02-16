@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { CheckCircle2, XCircle, Loader2, AlertCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -19,45 +19,92 @@ export default function PaymentCallback() {
   const [lastChecked, setLastChecked] = useState<Date | null>(null);
   const isRegistration = searchParams.get("type") === "registration";
 
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollCountRef = useRef(0);
+  const MAX_POLLS = 10;
+  const POLL_INTERVAL = 5000; // 5 seconds
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+      }
+    };
+  }, []);
+
+  const verifyWithBackend = async (ref: string): Promise<"completed" | "failed" | "pending"> => {
+    try {
+      const { data, error } = await supabase.functions.invoke("check-hubtel-status", {
+        body: { clientReference: ref },
+      });
+
+      if (error) {
+        console.error("Verification error:", error);
+        return "pending";
+      }
+
+      return data?.status === "completed" ? "completed" : 
+             data?.status === "failed" ? "failed" : "pending";
+    } catch (error) {
+      console.error("Verification error:", error);
+      return "pending";
+    }
+  };
+
+  const startPolling = (ref: string) => {
+    if (pollIntervalRef.current) return;
+    
+    pollIntervalRef.current = setInterval(async () => {
+      pollCountRef.current += 1;
+      console.log(`Polling payment status (${pollCountRef.current}/${MAX_POLLS})...`);
+      
+      const result = await verifyWithBackend(ref);
+      setLastChecked(new Date());
+      
+      if (result === "completed") {
+        setStatus("success");
+        queryClient.invalidateQueries({ queryKey: ["payments"] });
+        queryClient.invalidateQueries({ queryKey: ["profile"] });
+        if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      } else if (result === "failed") {
+        setStatus("failed");
+        if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      } else if (pollCountRef.current >= MAX_POLLS) {
+        // Stop polling after max attempts
+        if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+        console.log("Max poll attempts reached");
+      }
+    }, POLL_INTERVAL);
+  };
+
   useEffect(() => {
     const checkPaymentStatus = async () => {
-      // Get status from URL params
       const paymentStatus = searchParams.get("payment");
-      // Support both 'clientReference' and 'reference' query params
       const clientReference = searchParams.get("clientReference") || searchParams.get("reference");
       const hubtelStatus = searchParams.get("status");
       
       setReference(clientReference);
 
-      // Hubtel sends status in the return URL (case-insensitive check)
       const normalizedStatus = (hubtelStatus || "").toLowerCase();
       if (normalizedStatus === "success" || paymentStatus === "success") {
-        // Verify with our backend
         if (clientReference) {
-          try {
-            const { data, error } = await supabase.functions.invoke("verify-payment", {
-              body: { reference: clientReference },
-            });
-
-            if (error) {
-              console.error("Verification error:", error);
-              setStatus("pending");
-              return;
-            }
-
-            if (data.status === "completed") {
-              setStatus("success");
-              // Invalidate queries to refresh data
-              queryClient.invalidateQueries({ queryKey: ["payments"] });
-              queryClient.invalidateQueries({ queryKey: ["profile"] });
-            } else if (data.status === "failed") {
-              setStatus("failed");
-            } else {
-              setStatus("pending");
-            }
-          } catch (error) {
-            console.error("Verification error:", error);
+          const result = await verifyWithBackend(clientReference);
+          setLastChecked(new Date());
+          
+          if (result === "completed") {
+            setStatus("success");
+            queryClient.invalidateQueries({ queryKey: ["payments"] });
+            queryClient.invalidateQueries({ queryKey: ["profile"] });
+          } else if (result === "failed") {
+            setStatus("failed");
+          } else {
             setStatus("pending");
+            // Start auto-polling for pending payments
+            startPolling(clientReference);
           }
         } else {
           setStatus("success");
@@ -69,8 +116,21 @@ export default function PaymentCallback() {
       } else if (normalizedStatus === "failed" || paymentStatus === "failed") {
         setStatus("failed");
       } else {
-        // Default to pending if we can't determine status
         setStatus("pending");
+        if (clientReference) {
+          // Even without explicit success status, try checking
+          const result = await verifyWithBackend(clientReference);
+          setLastChecked(new Date());
+          if (result === "completed") {
+            setStatus("success");
+            queryClient.invalidateQueries({ queryKey: ["payments"] });
+            queryClient.invalidateQueries({ queryKey: ["profile"] });
+          } else if (result === "failed") {
+            setStatus("failed");
+          } else {
+            startPolling(clientReference);
+          }
+        }
       }
     };
 
