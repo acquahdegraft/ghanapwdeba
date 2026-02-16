@@ -35,18 +35,15 @@ serve(async (req) => {
     console.log("Hubtel callback received:", JSON.stringify(callbackData));
 
     // Extract relevant fields from Hubtel callback
-    // Hubtel sends: Status, ClientReference, Amount, TransactionId, etc.
-    const {
-      Status,
-      ClientReference,
-      TransactionId,
-      Amount,
-    } = callbackData as {
-      Status?: string;
-      ClientReference?: string;
-      Amount?: number;
-      TransactionId?: string;
-    };
+    // Hubtel sends data in nested structure: { ResponseCode, Status, Data: { ClientReference, Status, Amount, ... } }
+    const topLevel = callbackData as Record<string, unknown>;
+    const nestedData = (topLevel.Data || topLevel.data || {}) as Record<string, unknown>;
+    
+    // ClientReference and other fields can be at top level OR nested in Data
+    const ClientReference = (nestedData.ClientReference || nestedData.clientReference || topLevel.ClientReference || topLevel.clientReference) as string | undefined;
+    const Status = (nestedData.Status || nestedData.status || topLevel.Status || topLevel.status) as string | undefined;
+    const TransactionId = (nestedData.TransactionId || nestedData.transactionId || nestedData.CheckoutId || topLevel.TransactionId || topLevel.transactionId) as string | undefined;
+    const Amount = (nestedData.Amount || nestedData.amount || topLevel.Amount || topLevel.amount) as number | undefined;
 
     // === INPUT VALIDATION ===
     
@@ -122,12 +119,13 @@ serve(async (req) => {
     }
 
     // SECURITY CHECK: Verify Amount matches original payment (if provided)
-    // This prevents amount tampering in webhook payloads
+    // Hubtel may include processing fees in the amount, so allow tolerance
     if (Amount !== undefined && Amount !== null) {
       const expectedAmount = Number(paymentRecord.amount);
-      // Allow small floating point tolerance (0.01)
-      if (Math.abs(Amount - expectedAmount) > 0.01) {
-        console.error(`Amount mismatch: received ${Amount}, expected ${expectedAmount} for ${ClientReference}`);
+      // Allow up to 5% tolerance for Hubtel processing fees
+      const tolerance = Math.max(0.5, expectedAmount * 0.05);
+      if (Amount < expectedAmount - 0.01 || Amount > expectedAmount + tolerance) {
+        console.error(`Amount mismatch: received ${Amount}, expected ~${expectedAmount} for ${ClientReference}`);
         return new Response(JSON.stringify({ success: false, error: "Amount mismatch" }), {
           status: 400,
           headers: { "Content-Type": "application/json" }
