@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { CheckCircle, XCircle, Loader2, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import logo from "@/assets/logo.jpeg";
 
 export default function VerifyEmail() {
   const [searchParams] = useSearchParams();
@@ -27,9 +28,7 @@ export default function VerifyEmail() {
         <div className="mx-auto w-full max-w-md text-center">
           {/* Logo */}
           <div className="mb-8 flex items-center justify-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
-              <span className="text-xl font-bold text-primary-foreground">G</span>
-            </div>
+            <img src={logo} alt="GPWDEBA Logo" className="h-12 w-12 rounded-xl object-cover" />
             <div className="text-left">
               <h2 className="text-lg font-bold">GPWDEBA</h2>
               <p className="text-xs text-muted-foreground">Member Portal</p>

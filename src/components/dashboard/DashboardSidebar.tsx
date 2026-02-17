@@ -14,6 +14,7 @@ import {
   MapPin,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import logoImg from "@/assets/logo.jpeg";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { useAdminRole } from "@/hooks/useAdminRole";
@@ -60,9 +61,7 @@ export function DashboardSidebar() {
     <aside className="flex h-screen w-64 flex-col bg-sidebar text-sidebar-foreground">
       {/* Logo Section */}
       <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-6">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sidebar-primary">
-          <span className="text-lg font-bold text-sidebar-primary-foreground">G</span>
-        </div>
+        <img src={logoImg} alt="GPWDEBA Logo" className="h-9 w-9 rounded-lg object-cover" />
         <div className="flex flex-col">
           <span className="text-sm font-semibold leading-tight">GPWDEBA</span>
           <span className="text-xs text-sidebar-muted">Member Portal</span>

@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 import { disabilityTypeOptions, genderOptions } from "@/lib/ghanaRegions";
 import { supabase } from "@/integrations/supabase/client";
+import logo from "@/assets/logo.jpeg";
 
 const benefits = [
   "Access to business development resources",
@@ -196,9 +197,7 @@ export default function Register() {
 
           {/* Logo */}
           <div className="mb-6 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary">
-              <span className="text-lg font-bold text-primary-foreground">G</span>
-            </div>
+            <img src={logo} alt="GPWDEBA Logo" className="h-10 w-10 rounded-xl object-cover" />
             <span className="text-lg font-bold">GPWDEBA</span>
           </div>
 
