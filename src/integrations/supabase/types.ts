@@ -257,7 +257,7 @@ export type Database = {
           business_type: string | null
           city: string | null
           created_at: string
-          disability_type: Database["public"]["Enums"]["disability_type"] | null
+          disability_type: string | null
           email: string
           full_name: string
           gender: string | null
@@ -281,9 +281,7 @@ export type Database = {
           business_type?: string | null
           city?: string | null
           created_at?: string
-          disability_type?:
-            | Database["public"]["Enums"]["disability_type"]
-            | null
+          disability_type?: string | null
           email: string
           full_name: string
           gender?: string | null
@@ -307,9 +305,7 @@ export type Database = {
           business_type?: string | null
           city?: string | null
           created_at?: string
-          disability_type?:
-            | Database["public"]["Enums"]["disability_type"]
-            | null
+          disability_type?: string | null
           email?: string
           full_name?: string
           gender?: string | null
@@ -605,14 +601,6 @@ export type Database = {
         | "super_admin"
         | "regional_coordinator"
         | "district_coordinator"
-      disability_type:
-        | "physical"
-        | "visual"
-        | "hearing"
-        | "intellectual"
-        | "psychosocial"
-        | "multiple"
-        | "other"
       membership_status: "active" | "pending" | "suspended" | "expired"
       payment_status: "pending" | "completed" | "failed" | "refunded"
     }
@@ -748,15 +736,6 @@ export const Constants = {
         "super_admin",
         "regional_coordinator",
         "district_coordinator",
-      ],
-      disability_type: [
-        "physical",
-        "visual",
-        "hearing",
-        "intellectual",
-        "psychosocial",
-        "multiple",
-        "other",
       ],
       membership_status: ["active", "pending", "suspended", "expired"],
       payment_status: ["pending", "completed", "failed", "refunded"],

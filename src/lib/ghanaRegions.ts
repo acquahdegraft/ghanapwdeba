@@ -65,15 +65,34 @@ export const ghanaRegions = [
   }
 ];
 
-// Maps display labels to database enum values for disability_type
+// Full list of disability categories
 export const disabilityTypeOptions: { label: string; value: string }[] = [
-  { label: "Physical Disability", value: "physical" },
-  { label: "Visual Impairment", value: "visual" },
-  { label: "Hearing Impairment", value: "hearing" },
-  { label: "Intellectual Disability", value: "intellectual" },
-  { label: "Psychosocial Disability", value: "psychosocial" },
-  { label: "Multiple Disabilities", value: "multiple" },
-  { label: "Other", value: "other" },
+  { label: "Persons with physical disabilities", value: "physical" },
+  { label: "Deaf persons", value: "deaf" },
+  { label: "Persons who are non-verbal", value: "non_verbal" },
+  { label: "Persons with communication disabilities including speech and language disabilities", value: "communication" },
+  { label: "Persons who are hard of hearing", value: "hard_of_hearing" },
+  { label: "Persons with visual disabilities", value: "visual" },
+  { label: "Persons with multiple disabilities such as deafblind", value: "multiple" },
+  { label: "Persons with psychosocial disabilities", value: "psychosocial" },
+  { label: "Persons with cerebral palsy", value: "cerebral_palsy" },
+  { label: "Persons with bipolar conditions", value: "bipolar" },
+  { label: "Persons with attention deficit disorders", value: "attention_deficit" },
+  { label: "Persons with schizophrenia", value: "schizophrenia" },
+  { label: "Persons with developmental and neurological disabilities", value: "developmental_neurological" },
+  { label: "Persons with autism", value: "autism" },
+  { label: "Persons with Down syndrome", value: "down_syndrome" },
+  { label: "Persons with Turner Syndrome", value: "turner_syndrome" },
+  { label: "Persons with spinal injury", value: "spinal_injury" },
+  { label: "Persons with autoimmune conditions", value: "autoimmune" },
+  { label: "Persons with osteogenesis imperfecta", value: "osteogenesis_imperfecta" },
+  { label: "Persons with albinism", value: "albinism" },
+  { label: "Persons with intellectual disabilities", value: "intellectual" },
+  { label: "Persons with epilepsy", value: "epilepsy" },
+  { label: "Persons with leprosy", value: "leprosy" },
+  { label: "Little persons", value: "little_persons" },
+  { label: "Persons with hunchback", value: "hunchback" },
+  { label: "Burns Survivors", value: "burns_survivors" },
 ];
 
 // Keep legacy export for backward compat but mark deprecated
