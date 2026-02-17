@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { z } from "zod";
+import logo from "@/assets/logo.jpeg";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -95,9 +96,7 @@ export default function Login() {
         <div className="mx-auto w-full max-w-sm">
           {/* Logo */}
           <div className="mb-8 flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
-              <span className="text-xl font-bold text-primary-foreground">G</span>
-            </div>
+            <img src={logo} alt="GPWDEBA Logo" className="h-12 w-12 rounded-xl object-cover" />
             <div>
               <h2 className="text-lg font-bold">GPWDEBA</h2>
               <p className="text-xs text-muted-foreground">Member Portal</p>

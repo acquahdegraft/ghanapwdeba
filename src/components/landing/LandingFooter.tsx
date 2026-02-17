@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { Facebook, Instagram, Linkedin, Twitter } from "lucide-react";
+import logo from "@/assets/logo.jpeg";
 
 const socialLinks = [
   { icon: Facebook, href: "https://facebook.com/gpwdeba", label: "Facebook" },
@@ -16,9 +17,7 @@ export function LandingFooter() {
           {/* Brand */}
           <div className="md:col-span-1">
             <div className="flex items-center gap-3 mb-4">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-                <span className="text-sm font-bold text-primary-foreground">G</span>
-              </div>
+              <img src={logo} alt="GPWDEBA Logo" className="h-8 w-8 rounded-lg object-cover" />
               <div>
                 <p className="text-sm font-semibold">GPWDEBA</p>
               </div>
