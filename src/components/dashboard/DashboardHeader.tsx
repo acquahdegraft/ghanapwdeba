@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Bell, Search, Menu } from "lucide-react";
+import { Search, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PaymentModal } from "./PaymentModal";
+import { NotificationBell } from "./NotificationBell";
 import { useMemberDues } from "@/hooks/useMemberDues";
 
 export function DashboardHeader() {
@@ -31,11 +32,7 @@ export function DashboardHeader() {
 
         {/* Right side actions */}
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="h-5 w-5" />
-            <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-accent" />
-            <span className="sr-only">Notifications</span>
-          </Button>
+          <NotificationBell />
 
           {/* Quick action */}
           <Button 
