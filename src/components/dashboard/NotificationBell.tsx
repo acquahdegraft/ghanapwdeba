@@ -8,6 +8,9 @@ import { cn } from "@/lib/utils";
 import { usePublishedAnnouncements } from "@/hooks/useAnnouncements";
 import { useEvents } from "@/hooks/useEvents";
 import { format, formatDistanceToNow, isBefore, addDays } from "date-fns";
+import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const STORAGE_KEY = "gpwdeba_dismissed_notifications";
 
@@ -36,11 +39,53 @@ const priorityColor: Record<string, string> = {
 export function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [dismissed, setDismissed] = useState<string[]>(getDismissed);
+  const [realtimeStatus, setRealtimeStatus] = useState<"connecting" | "connected" | "disconnected">("connecting");
   const panelRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const queryClient = useQueryClient();
 
   const { data: announcements = [] } = usePublishedAnnouncements();
   const { data: events = [] } = useEvents();
+
+  // Realtime subscription for announcements
+  useEffect(() => {
+    const channel = supabase
+      .channel("announcements-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "announcements" },
+        (payload) => {
+          // Refetch published announcements when any change occurs
+          queryClient.invalidateQueries({ queryKey: ["announcements", "published"] });
+
+          // Show a toast for new published announcements
+          if (
+            payload.eventType === "INSERT" &&
+            (payload.new as { is_published?: boolean })?.is_published
+          ) {
+            const title = (payload.new as { title?: string })?.title || "New announcement";
+            toast.info(`📢 New announcement: ${title}`, { duration: 5000 });
+          } else if (
+            payload.eventType === "UPDATE" &&
+            (payload.new as { is_published?: boolean })?.is_published &&
+            !(payload.old as { is_published?: boolean })?.is_published
+          ) {
+            // Was just published
+            const title = (payload.new as { title?: string })?.title || "New announcement";
+            toast.info(`📢 New announcement: ${title}`, { duration: 5000 });
+          }
+        }
+      )
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") setRealtimeStatus("connected");
+        else if (status === "CLOSED" || status === "CHANNEL_ERROR") setRealtimeStatus("disconnected");
+        else setRealtimeStatus("connecting");
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   // Upcoming events in the next 7 days that the user is registered for
   const upcomingEvents = events.filter((e) => {
@@ -115,7 +160,24 @@ export function NotificationBell() {
         >
           {/* Header */}
           <div className="flex items-center justify-between border-b px-4 py-3">
-            <span className="font-semibold text-sm">Notifications</span>
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-sm">Notifications</span>
+              <span
+                title={
+                  realtimeStatus === "connected"
+                    ? "Live updates active"
+                    : realtimeStatus === "connecting"
+                    ? "Connecting…"
+                    : "Realtime disconnected"
+                }
+              className={cn(
+                  "h-1.5 w-1.5 rounded-full",
+                  realtimeStatus === "connected" && "bg-chart-2",
+                  realtimeStatus === "connecting" && "bg-chart-4 animate-pulse",
+                  realtimeStatus === "disconnected" && "bg-destructive"
+                )}
+              />
+            </div>
             {unreadCount > 0 && (
               <button
                 onClick={dismissAll}
