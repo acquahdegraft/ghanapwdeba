@@ -26,10 +26,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { MoreHorizontal, Search, UserCheck, UserX, Clock, Ban, Download, X, Users } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { MoreHorizontal, Search, UserCheck, UserX, Clock, Ban, Download, X, Users, Trash2 } from "lucide-react";
 import { MemberProfile, useUpdateMembershipStatus } from "@/hooks/useAdminData";
 import { useMembershipTypes } from "@/hooks/useMembershipTypes";
-import { useBulkUpdateMemberStatus } from "@/hooks/useBulkMemberActions";
+import { useBulkUpdateMemberStatus, useBulkDeleteMembers } from "@/hooks/useBulkMemberActions";
 import { ghanaRegions } from "@/lib/ghanaRegions";
 import { exportToCSV, formatDateForExport } from "@/lib/csvExport";
 import { MemberImport } from "./MemberImport";
@@ -53,9 +63,11 @@ export function MembersTable({ members, isLoading }: MembersTableProps) {
   const [regionFilter, setRegionFilter] = useState("all");
   const [membershipTypeFilter, setMembershipTypeFilter] = useState("all");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   
   const updateStatus = useUpdateMembershipStatus();
   const bulkUpdateStatus = useBulkUpdateMemberStatus();
+  const bulkDelete = useBulkDeleteMembers();
   const { data: membershipTypes = [] } = useMembershipTypes();
 
   const filteredMembers = useMemo(() => {
@@ -322,6 +334,15 @@ export function MembersTable({ members, isLoading }: MembersTableProps) {
               </Button>
               <Button
                 size="sm"
+                variant="destructive"
+                onClick={() => setShowDeleteDialog(true)}
+                disabled={bulkDelete.isPending}
+              >
+                <Trash2 className="mr-1 h-4 w-4" />
+                Delete
+              </Button>
+              <Button
+                size="sm"
                 variant="ghost"
                 onClick={() => setSelectedIds([])}
               >
@@ -330,6 +351,34 @@ export function MembersTable({ members, isLoading }: MembersTableProps) {
             </div>
           )}
         </div>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete {selectedIds.length} member(s)?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete the selected member profiles and all associated data.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={() => {
+                  bulkDelete.mutate({ profileIds: selectedIds }, {
+                    onSuccess: () => {
+                      setSelectedIds([]);
+                      setShowDeleteDialog(false);
+                    },
+                  });
+                }}
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {isLoading ? (
           <div className="flex h-32 items-center justify-center">

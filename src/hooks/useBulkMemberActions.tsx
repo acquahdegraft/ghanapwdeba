@@ -3,6 +3,29 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { addYears } from "date-fns";
 
+export function useBulkDeleteMembers() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ profileIds }: { profileIds: string[] }) => {
+      const { error } = await supabase
+        .from("profiles")
+        .delete()
+        .in("id", profileIds);
+
+      if (error) throw error;
+      return { count: profileIds.length };
+    },
+    onSuccess: ({ count }) => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "members"] });
+      toast.success(`Deleted ${count} member(s) successfully`);
+    },
+    onError: (error) => {
+      toast.error("Failed to delete members: " + error.message);
+    },
+  });
+}
+
 interface BulkStatusUpdateParams {
   profileIds: string[];
   status: "active" | "pending" | "expired" | "suspended";
