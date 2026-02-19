@@ -34,19 +34,6 @@ serve(async (req) => {
 
     console.log("Hubtel callback received:", JSON.stringify(callbackData));
 
-    // Log the raw callback payload immediately
-    const sourceIp = req.headers.get("x-forwarded-for") || req.headers.get("cf-connecting-ip") || "unknown";
-    const logEntry = {
-      log_type: "callback",
-      transaction_reference: null as string | null,
-      payment_id: null as string | null,
-      raw_payload: callbackData,
-      parsed_status: null as string | null,
-      hubtel_status: null as string | null,
-      amount: null as number | null,
-      source_ip: sourceIp,
-    };
-
     // Extract relevant fields from Hubtel callback
     // Hubtel sends data in nested structure: { ResponseCode, Status, Data: { ClientReference, Status, Amount, ... } }
     const topLevel = callbackData as Record<string, unknown>;
@@ -168,18 +155,6 @@ serve(async (req) => {
     const hubtelStatus = String(Status || "").toLowerCase();
     const paymentStatus = hubtelStatus === "success" ? "completed" : 
                           hubtelStatus === "failed" ? "failed" : "pending";
-
-    // Update log entry with parsed data
-    logEntry.transaction_reference = ClientReference;
-    logEntry.payment_id = paymentRecord.id;
-    logEntry.parsed_status = paymentStatus;
-    logEntry.hubtel_status = Status || null;
-    logEntry.amount = Amount ?? null;
-
-    // Persist the log
-    await supabaseAdmin.from("payment_logs").insert(logEntry).catch((err: unknown) => {
-      console.error("Failed to insert payment log (callback):", err);
-    });
 
     console.log(`Updating payment ${ClientReference} from ${paymentRecord.status} to ${paymentStatus}`);
 

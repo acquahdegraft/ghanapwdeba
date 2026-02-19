@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { Link } from "react-router-dom";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MembersTable } from "@/components/admin/MembersTable";
@@ -13,8 +12,7 @@ import { ResourcesManagement } from "@/components/admin/ResourcesManagement";
 import { useAllMembers, useAllPayments } from "@/hooks/useAdminData";
 import { RoleManagement } from "@/components/admin/RoleManagement";
 import { useCurrentUserPermissions } from "@/hooks/useCurrentUserPermissions";
-import { Button } from "@/components/ui/button";
-import { Users, CreditCard, DollarSign, Megaphone, Calendar, BarChart3, FileText, Shield, ScrollText } from "lucide-react";
+import { Users, CreditCard, DollarSign, Megaphone, Calendar, BarChart3, FileText, Shield } from "lucide-react";
 
 interface AdminTab {
   value: string;
@@ -65,17 +63,9 @@ export default function AdminDashboard() {
       title="Admin Dashboard"
       description="Manage members, payments, dues, events, and announcements"
     >
-      {/* Stats Overview + Payment Logs link */}
-      <div className="mb-8 flex flex-col sm:flex-row sm:items-start gap-4">
-        <div className="flex-1">
-          <AdminStats members={members} payments={payments} />
-        </div>
-        <Button asChild variant="outline" size="sm" className="shrink-0 gap-2">
-          <Link to="/dashboard/admin/payment-logs">
-            <ScrollText className="h-4 w-4" />
-            Payment Logs
-          </Link>
-        </Button>
+      {/* Stats Overview - visible to all admins */}
+      <div className="mb-8">
+        <AdminStats members={members} payments={payments} />
       </div>
 
       {visibleTabs.length === 0 ? (

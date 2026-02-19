@@ -29,7 +29,6 @@ import AdminDashboard from "./pages/AdminDashboard";
 import CoordinatorDashboard from "./pages/CoordinatorDashboard";
 import PaymentCallback from "./pages/PaymentCallback";
 import HelpSupport from "./pages/HelpSupport";
-import PaymentLogs from "./pages/PaymentLogs";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -94,14 +93,6 @@ const App = () => (
               element={
                 <ProtectedRoute requireAdmin>
                   <AdminDashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/admin/payment-logs"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <PaymentLogs />
                 </ProtectedRoute>
               }
             />
