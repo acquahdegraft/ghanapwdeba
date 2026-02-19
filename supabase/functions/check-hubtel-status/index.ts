@@ -203,6 +203,12 @@ serve(async (req) => {
     
     console.log(`Checking Hubtel status for reference: ${clientReference}`);
     
+    // Service role client for logging
+    const supabaseServiceRole = createClient(
+      supabaseUrl,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
     const hubtelResponse = await fetch(hubtelUrl, {
       method: "GET",
       headers: {
@@ -241,6 +247,20 @@ serve(async (req) => {
     // Handle PascalCase and camelCase response fields
     const responseCode = (rawHubtelData.ResponseCode || rawHubtelData.responseCode) as string;
     const responseMessage = (rawHubtelData.Message || rawHubtelData.message) as string | undefined;
+
+    // Log the raw status check response
+    await supabaseServiceRole.from("payment_logs").insert({
+      log_type: "status_check",
+      transaction_reference: clientReference,
+      payment_id: paymentId,
+      raw_payload: rawHubtelData,
+      parsed_status: null, // Will be determined below
+      hubtel_status: null,
+      amount: null,
+      source_ip: req.headers.get("x-forwarded-for") || "server",
+    }).catch((err: unknown) => {
+      console.error("Failed to insert payment log (status_check):", err);
+    });
     
     // Build result
     const result: StatusCheckResult = {
@@ -288,27 +308,19 @@ serve(async (req) => {
       // Sync database if payment is confirmed as Paid and not already completed
       if (result.status === "completed" && currentPaymentStatus !== "completed") {
         console.log(`Syncing payment ${paymentId} to completed status`);
-        
-        // Use service role client for database update
-        const supabaseServiceRole = createClient(
-          supabaseUrl,
-          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-        );
 
         const updateData: Record<string, unknown> = {
           status: "completed",
           payment_date: (data.StartDate || data.date || new Date().toISOString()) as string,
-          webhook_token: null, // Clear webhook token after successful payment
+          webhook_token: null,
           updated_at: new Date().toISOString(),
         };
 
-        // Add payment method if available
         const paymentMethod = (data.PaymentMethod || data.paymentMethod) as string | undefined;
         if (paymentMethod) {
           updateData.payment_method = paymentMethod;
         }
 
-        // Add transaction ID to notes if available
         const txnId = (data.TransactionId || data.transactionId) as string | undefined;
         const extTxnId = (data.NetworkTransactionId || data.externalTransactionId) as string | undefined;
         if (txnId || extTxnId) {
@@ -328,7 +340,6 @@ serve(async (req) => {
           console.log(`Payment ${paymentId} successfully updated to completed`);
           result.databaseUpdated = true;
 
-          // Also update user profile membership status
           const { error: profileError } = await supabaseServiceRole
             .from("profiles")
             .update({
@@ -346,14 +357,13 @@ serve(async (req) => {
           }
         }
       } else if (result.status === "completed" && currentPaymentStatus === "completed") {
-        // Already completed, no update needed
         result.databaseUpdated = false;
         result.message = "Payment already marked as completed";
       }
     } else {
       // Hubtel returned an error or no data
-      result.status = "pending"; // Default to pending if we can't determine
-      result.message = hubtelData.message || "Unable to retrieve transaction status";
+      result.status = "pending";
+      result.message = responseMessage || "Unable to retrieve transaction status";
     }
 
     return new Response(
