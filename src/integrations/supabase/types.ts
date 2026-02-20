@@ -202,6 +202,45 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_logs: {
+        Row: {
+          amount: number | null
+          created_at: string
+          hubtel_status: string | null
+          id: string
+          log_type: string
+          parsed_status: string | null
+          payment_id: string | null
+          raw_payload: Json
+          source_ip: string | null
+          transaction_reference: string | null
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string
+          hubtel_status?: string | null
+          id?: string
+          log_type: string
+          parsed_status?: string | null
+          payment_id?: string | null
+          raw_payload: Json
+          source_ip?: string | null
+          transaction_reference?: string | null
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string
+          hubtel_status?: string | null
+          id?: string
+          log_type?: string
+          parsed_status?: string | null
+          payment_id?: string | null
+          raw_payload?: Json
+          source_ip?: string | null
+          transaction_reference?: string | null
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           amount: number
