@@ -58,6 +58,99 @@ const priorityColors = {
   urgent: "bg-destructive/10 text-destructive",
 };
 
+interface FormData {
+  title: string;
+  content: string;
+  priority: "low" | "normal" | "high" | "urgent";
+  is_published: boolean;
+  publish_date: string;
+  expire_date: string;
+}
+
+interface AnnouncementFormProps {
+  formData: FormData;
+  onChange: (data: FormData) => void;
+}
+
+function AnnouncementForm({ formData, onChange }: AnnouncementFormProps) {
+  return (
+    <div className="space-y-4 py-4">
+      <div className="space-y-2">
+        <Label htmlFor="title">Title</Label>
+        <Input
+          id="title"
+          value={formData.title}
+          onChange={(e) => onChange({ ...formData, title: e.target.value })}
+          placeholder="Announcement title"
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="content">Content</Label>
+        <Textarea
+          id="content"
+          value={formData.content}
+          onChange={(e) => onChange({ ...formData, content: e.target.value })}
+          placeholder="Announcement content..."
+          rows={5}
+        />
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="priority">Priority</Label>
+          <Select
+            value={formData.priority}
+            onValueChange={(value: "low" | "normal" | "high" | "urgent") =>
+              onChange({ ...formData, priority: value })
+            }
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="low">Low</SelectItem>
+              <SelectItem value="normal">Normal</SelectItem>
+              <SelectItem value="high">High</SelectItem>
+              <SelectItem value="urgent">Urgent</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex items-end space-x-2">
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="is_published"
+              checked={formData.is_published}
+              onCheckedChange={(checked) =>
+                onChange({ ...formData, is_published: checked })
+              }
+            />
+            <Label htmlFor="is_published">Publish immediately</Label>
+          </div>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="publish_date">Publish Date (optional)</Label>
+          <Input
+            id="publish_date"
+            type="datetime-local"
+            value={formData.publish_date}
+            onChange={(e) => onChange({ ...formData, publish_date: e.target.value })}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="expire_date">Expire Date (optional)</Label>
+          <Input
+            id="expire_date"
+            type="datetime-local"
+            value={formData.expire_date}
+            onChange={(e) => onChange({ ...formData, expire_date: e.target.value })}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function AnnouncementsManagement() {
   const { data: announcements = [], isLoading } = useAllAnnouncements();
   const createMutation = useCreateAnnouncement();
@@ -66,10 +159,10 @@ export function AnnouncementsManagement() {
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     title: "",
     content: "",
-    priority: "normal" as "low" | "normal" | "high" | "urgent",
+    priority: "normal",
     is_published: false,
     publish_date: "",
     expire_date: "",
@@ -151,87 +244,6 @@ export function AnnouncementsManagement() {
     );
   }
 
-  const AnnouncementForm = () => (
-    <div className="space-y-4 py-4">
-      <div className="space-y-2">
-        <Label htmlFor="title">Title</Label>
-        <Input
-          id="title"
-          value={formData.title}
-          onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-          placeholder="Announcement title"
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="content">Content</Label>
-        <Textarea
-          id="content"
-          value={formData.content}
-          onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-          placeholder="Announcement content..."
-          rows={5}
-        />
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="priority">Priority</Label>
-          <Select
-            value={formData.priority}
-            onValueChange={(value: "low" | "normal" | "high" | "urgent") =>
-              setFormData({ ...formData, priority: value })
-            }
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="low">Low</SelectItem>
-              <SelectItem value="normal">Normal</SelectItem>
-              <SelectItem value="high">High</SelectItem>
-              <SelectItem value="urgent">Urgent</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex items-end space-x-2">
-          <div className="flex items-center space-x-2">
-            <Switch
-              id="is_published"
-              checked={formData.is_published}
-              onCheckedChange={(checked) =>
-                setFormData({ ...formData, is_published: checked })
-              }
-            />
-            <Label htmlFor="is_published">Publish immediately</Label>
-          </div>
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="publish_date">Publish Date (optional)</Label>
-          <Input
-            id="publish_date"
-            type="datetime-local"
-            value={formData.publish_date}
-            onChange={(e) =>
-              setFormData({ ...formData, publish_date: e.target.value })
-            }
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="expire_date">Expire Date (optional)</Label>
-          <Input
-            id="expire_date"
-            type="datetime-local"
-            value={formData.expire_date}
-            onChange={(e) =>
-              setFormData({ ...formData, expire_date: e.target.value })
-            }
-          />
-        </div>
-      </div>
-    </div>
-  );
-
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -241,7 +253,7 @@ export function AnnouncementsManagement() {
             Create and manage announcements for members
           </CardDescription>
         </div>
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <Dialog open={isCreateOpen} onOpenChange={(open) => { setIsCreateOpen(open); if (!open) resetForm(); }}>
           <DialogTrigger asChild>
             <Button onClick={() => resetForm()}>
               <Plus className="mr-2 h-4 w-4" />
@@ -255,16 +267,14 @@ export function AnnouncementsManagement() {
                 Create a new announcement for members
               </DialogDescription>
             </DialogHeader>
-            <AnnouncementForm />
+            <AnnouncementForm formData={formData} onChange={setFormData} />
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
                 Cancel
               </Button>
               <Button
                 onClick={handleCreate}
-                disabled={
-                  createMutation.isPending || !formData.title || !formData.content
-                }
+                disabled={createMutation.isPending || !formData.title || !formData.content}
               >
                 {createMutation.isPending ? "Creating..." : "Create"}
               </Button>
@@ -336,7 +346,7 @@ export function AnnouncementsManagement() {
                             Update announcement details
                           </DialogDescription>
                         </DialogHeader>
-                        <AnnouncementForm />
+                        <AnnouncementForm formData={formData} onChange={setFormData} />
                         <DialogFooter>
                           <Button variant="outline" onClick={() => resetForm()}>
                             Cancel
