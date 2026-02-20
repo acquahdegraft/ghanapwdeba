@@ -54,6 +54,27 @@ export function useAllAnnouncements() {
   });
 }
 
+async function sendAnnouncementEmails(announcementId: string) {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+    await fetch(
+      `https://${projectId}.supabase.co/functions/v1/send-announcement-notification`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ announcementId }),
+      }
+    );
+  } catch (err) {
+    console.error("Failed to send announcement emails:", err);
+  }
+}
+
 export function useCreateAnnouncement() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -69,7 +90,6 @@ export function useCreateAnnouncement() {
     }) => {
       if (!user) throw new Error("Not authenticated");
 
-      // RLS policies enforce admin-only access - this is just for UX
       const { data, error } = await supabase
         .from("announcements")
         .insert({
@@ -87,12 +107,18 @@ export function useCreateAnnouncement() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["announcements"] });
       toast.success("Announcement created successfully");
+      // Send emails if published immediately
+      if (data?.is_published) {
+        sendAnnouncementEmails(data.id).then(() => {
+          toast.success("Email notifications sent to all active members");
+        });
+      }
     },
     onError: (error) => {
-      const message = error.message.includes("row-level security") 
+      const message = error.message.includes("row-level security")
         ? "You don't have permission to perform this action"
         : error.message;
       toast.error("Failed to create announcement: " + message);
@@ -106,6 +132,7 @@ export function useUpdateAnnouncement() {
   return useMutation({
     mutationFn: async ({
       id,
+      _previouslyPublished,
       ...updates
     }: {
       id: string;
@@ -115,8 +142,8 @@ export function useUpdateAnnouncement() {
       is_published?: boolean;
       publish_date?: string | null;
       expire_date?: string | null;
+      _previouslyPublished?: boolean;
     }) => {
-      // RLS policies enforce admin-only access - this is just for UX
       const { data, error } = await supabase
         .from("announcements")
         .update(updates)
@@ -125,14 +152,20 @@ export function useUpdateAnnouncement() {
         .single();
 
       if (error) throw error;
-      return data;
+      return { data, wasJustPublished: !_previouslyPublished && updates.is_published === true };
     },
-    onSuccess: () => {
+    onSuccess: ({ data, wasJustPublished }) => {
       queryClient.invalidateQueries({ queryKey: ["announcements"] });
       toast.success("Announcement updated successfully");
+      // Only send emails when toggling from unpublished → published
+      if (wasJustPublished && data?.id) {
+        sendAnnouncementEmails(data.id).then(() => {
+          toast.success("Email notifications sent to all active members");
+        });
+      }
     },
     onError: (error) => {
-      const message = error.message.includes("row-level security") 
+      const message = error.message.includes("row-level security")
         ? "You don't have permission to perform this action"
         : error.message;
       toast.error("Failed to update announcement: " + message);

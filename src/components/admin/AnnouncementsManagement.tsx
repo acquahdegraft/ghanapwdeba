@@ -227,6 +227,7 @@ export function AnnouncementsManagement() {
     updateMutation.mutate({
       id: announcement.id,
       is_published: !announcement.is_published,
+      _previouslyPublished: announcement.is_published,
     });
   };
 
