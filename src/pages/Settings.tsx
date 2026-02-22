@@ -41,6 +41,9 @@ import {
   Mail,
   Phone,
   KeyRound,
+  Monitor,
+  LogOut,
+  Globe,
 } from "lucide-react";
 import { PasswordStrengthIndicator } from "@/components/auth/PasswordStrengthIndicator";
 import { format, parseISO } from "date-fns";
@@ -196,6 +199,157 @@ function SecuritySection() {
         <Button onClick={handleChangePassword} disabled={loading || !currentPassword || !newPassword || !confirmPassword}>
           {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Updating…</> : "Update Password"}
         </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ── Sessions Management Section ───────────────────────────────────
+function SessionsSection() {
+  const { user, signOut } = useAuth();
+  const { session } = useAuth();
+  const { toast } = useToast();
+  const navigate = useNavigate();
+  const [revokingOthers, setRevokingOthers] = useState(false);
+  const [revokingAll, setRevokingAll] = useState(false);
+
+  const lastSignIn = user?.last_sign_in_at
+    ? format(parseISO(user.last_sign_in_at), "MMMM d, yyyy 'at' h:mm a")
+    : "Unknown";
+
+  const createdAt = user?.created_at
+    ? format(parseISO(user.created_at), "MMMM d, yyyy")
+    : "Unknown";
+
+  const currentProvider = user?.app_metadata?.provider || "email";
+
+  const handleRevokeOthers = async () => {
+    setRevokingOthers(true);
+    try {
+      const { error } = await supabase.auth.signOut({ scope: "others" });
+      if (error) throw error;
+      toast({ title: "Done", description: "All other sessions have been signed out." });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setRevokingOthers(false);
+    }
+  };
+
+  const handleRevokeAll = async () => {
+    setRevokingAll(true);
+    try {
+      const { error } = await supabase.auth.signOut({ scope: "global" });
+      if (error) throw error;
+      toast({ title: "Signed Out", description: "All sessions have been revoked. You will be redirected." });
+      navigate("/login");
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setRevokingAll(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2"><Monitor className="h-5 w-5" /> Active Sessions</CardTitle>
+        <CardDescription>Manage your login sessions across devices</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Current Session */}
+        <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Monitor className="h-4 w-4 text-primary" />
+              <span className="font-medium text-sm">Current Session</span>
+            </div>
+            <Badge variant="default" className="text-xs">Active</Badge>
+          </div>
+          <div className="grid gap-2 text-sm sm:grid-cols-2">
+            <div>
+              <span className="text-muted-foreground">Sign-in method: </span>
+              <span className="font-medium capitalize">{currentProvider}</span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Last sign-in: </span>
+              <span className="font-medium">{lastSignIn}</span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Account created: </span>
+              <span className="font-medium">{createdAt}</span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Email: </span>
+              <span className="font-medium">{user?.email || "—"}</span>
+            </div>
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Session Actions */}
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <h4 className="font-medium text-sm">Sign out other devices</h4>
+              <p className="text-sm text-muted-foreground">Revoke all sessions except this one</p>
+            </div>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <LogOut className="mr-2 h-4 w-4" /> Sign Out Others
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Sign out other devices?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will sign you out of all other browsers and devices. Your current session will remain active.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleRevokeOthers} disabled={revokingOthers}>
+                    {revokingOthers ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Revoking…</> : "Yes, sign out others"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <h4 className="font-medium text-sm">Sign out everywhere</h4>
+              <p className="text-sm text-muted-foreground">Revoke all sessions including this one</p>
+            </div>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm">
+                  <Globe className="mr-2 h-4 w-4" /> Sign Out Everywhere
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Sign out everywhere?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will sign you out of all devices, including this one. You will need to log in again.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleRevokeAll}
+                    disabled={revokingAll}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    {revokingAll ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Signing out…</> : "Yes, sign out everywhere"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );
@@ -450,6 +604,7 @@ export default function Settings() {
 
         <TabsContent value="security" className="space-y-6">
           <SecuritySection />
+          <SessionsSection />
         </TabsContent>
 
         <TabsContent value="notifications" className="space-y-6">
