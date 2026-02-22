@@ -29,6 +29,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import CoordinatorDashboard from "./pages/CoordinatorDashboard";
 import PaymentCallback from "./pages/PaymentCallback";
 import HelpSupport from "./pages/HelpSupport";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -141,6 +142,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <HelpSupport />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/settings"
+              element={
+                <ProtectedRoute>
+                  <Settings />
                 </ProtectedRoute>
               }
             />
