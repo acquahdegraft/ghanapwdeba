@@ -52,24 +52,9 @@ serve(async (req) => {
       );
     }
 
-    // Get the Standard membership type (lowest dues tier)
-    const { data: standardType, error: typeError } = await supabaseAdmin
-      .from("membership_types")
-      .select("id, name, annual_dues")
-      .eq("is_active", true)
-      .order("annual_dues", { ascending: true })
-      .limit(1)
-      .single();
-
-    if (typeError || !standardType) {
-      console.error("Membership type lookup failed:", typeError);
-      return new Response(
-        JSON.stringify({ error: "Could not determine registration fee" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const amount = standardType.annual_dues;
+    // Flat registration fee of GH₵5 for all membership types
+    const REGISTRATION_FEE = 5;
+    const amount = REGISTRATION_FEE;
     const clientReference = `REG-${profile.user_id.substring(0, 8)}-${Date.now()}`;
     const webhookToken = generateWebhookToken();
 
@@ -83,7 +68,7 @@ serve(async (req) => {
         payment_method: "hubtel_checkout",
         transaction_reference: clientReference,
         status: "pending",
-        notes: `Registration fee - ${standardType.name} membership`,
+        notes: "Registration fee (flat rate)",
         webhook_token: webhookToken,
       });
 
@@ -125,7 +110,7 @@ serve(async (req) => {
 
     const hubtelPayload: Record<string, unknown> = {
       totalAmount: amount,
-      description: `GPWDEBA Registration Fee - ${standardType.name} Membership (GHS ${amount})`,
+      description: `GPWDEBA Registration Fee (GHS ${amount})`,
       callbackUrl,
       returnUrl,
       cancellationUrl,
@@ -143,7 +128,6 @@ serve(async (req) => {
       email,
       amount,
       clientReference,
-      membershipType: standardType.name,
     });
 
     const hubtelResponse = await fetch("https://payproxyapi.hubtel.com/items/initiate", {
@@ -204,7 +188,6 @@ serve(async (req) => {
         checkoutUrl,
         clientReference,
         amount,
-        membershipType: standardType.name,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
