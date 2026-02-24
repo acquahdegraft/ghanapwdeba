@@ -75,9 +75,13 @@ export default function Membership() {
             <h1 className="mb-6 text-4xl font-bold tracking-tight md:text-5xl">
               Become a Member
             </h1>
-            <p className="mb-8 text-lg text-muted-foreground md:text-xl">
+            <p className="mb-4 text-lg text-muted-foreground md:text-xl">
               Join Ghana's leading network of PWD entrepreneurs and unlock opportunities 
               for growth, collaboration, and success.
+            </p>
+            <p className="mb-8 rounded-lg bg-accent/10 px-4 py-3 text-sm font-medium text-accent-foreground">
+              Register for just <span className="font-bold text-primary">GH₵5</span> — a flat fee for all membership types. 
+              Annual dues based on your tier are payable at the end of the year.
             </p>
             <Button size="lg" asChild className="gradient-primary">
               <Link to="/register">
@@ -107,10 +111,24 @@ export default function Membership() {
         </div>
       </section>
 
+      {/* Registration Fee */}
+      <section className="bg-primary/5 py-10">
+        <div className="container mx-auto px-4 text-center">
+          <h2 className="mb-3 text-2xl font-bold">One-Time Registration Fee</h2>
+          <p className="mx-auto max-w-2xl text-muted-foreground">
+            All new members pay a flat <span className="font-semibold text-primary">GH₵5 registration fee</span> at sign-up, 
+            regardless of membership type. This covers your account setup and onboarding.
+          </p>
+        </div>
+      </section>
+
       {/* Membership Types */}
       <section className="bg-muted/30 py-16">
         <div className="container mx-auto px-4">
-          <h2 className="mb-12 text-center text-3xl font-bold">Membership Types</h2>
+          <h2 className="mb-2 text-center text-3xl font-bold">Annual Dues by Membership Type</h2>
+          <p className="mb-12 text-center text-muted-foreground">
+            Annual dues are billed separately and vary based on your chosen tier. You can change your tier anytime from your profile.
+          </p>
           <div className="grid gap-8 md:grid-cols-3">
             {membershipTypes.map((type) => (
               <div
@@ -119,10 +137,11 @@ export default function Membership() {
               >
                 <h3 className="mb-2 text-xl font-bold">{type.name}</h3>
                 <p className="mb-4 text-sm text-muted-foreground">{type.description}</p>
-                <div className="mb-6">
+                <div className="mb-1">
                   <span className="text-3xl font-bold text-primary">{type.price}</span>
                   <span className="text-muted-foreground"> {type.period}</span>
                 </div>
+                <p className="mb-6 text-xs text-muted-foreground">Annual dues · Registration is GH₵5</p>
                 <ul className="mb-6 space-y-3">
                   {type.features.map((feature) => (
                     <li key={feature} className="flex items-center gap-2 text-sm">
@@ -162,9 +181,9 @@ export default function Membership() {
                   2
                 </div>
                 <div>
-                  <h3 className="font-semibold">Complete Your Profile</h3>
+                  <h3 className="font-semibold">Pay Registration Fee</h3>
                   <p className="text-muted-foreground">
-                    Add your business information and upload any required documents.
+                    Pay the one-time GH₵5 registration fee via mobile money to activate your account.
                   </p>
                 </div>
               </div>
@@ -173,9 +192,9 @@ export default function Membership() {
                   3
                 </div>
                 <div>
-                  <h3 className="font-semibold">Pay Membership Dues</h3>
+                  <h3 className="font-semibold">Complete Your Profile</h3>
                   <p className="text-muted-foreground">
-                    Complete your annual dues payment via mobile money or other available methods.
+                    Add your business information and choose your preferred membership type.
                   </p>
                 </div>
               </div>
@@ -184,9 +203,9 @@ export default function Membership() {
                   4
                 </div>
                 <div>
-                  <h3 className="font-semibold">Start Connecting</h3>
+                  <h3 className="font-semibold">Pay Annual Dues & Start Connecting</h3>
                   <p className="text-muted-foreground">
-                    Access your member dashboard and start enjoying all the benefits of membership.
+                    When annual dues are due, pay based on your membership tier and enjoy full member benefits.
                   </p>
                 </div>
               </div>
