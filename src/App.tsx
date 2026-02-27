@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { AccessibilityToolbar } from "@/components/AccessibilityToolbar";
 import Index from "./pages/Index";
 import About from "./pages/About";
 import Membership from "./pages/Membership";
@@ -41,6 +42,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <AccessibilityToolbar />
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/about" element={<About />} />
