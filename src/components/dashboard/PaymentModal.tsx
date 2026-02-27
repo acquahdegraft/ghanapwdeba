@@ -1,9 +1,7 @@
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Loader2, Phone, ExternalLink, CheckCircle2, XCircle, AlertTriangle, Copy, Check } from "lucide-react";
+import { Loader2, ExternalLink, CheckCircle2, XCircle, AlertTriangle, Copy, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
@@ -31,7 +29,7 @@ function generateClientReference(): string {
 
 export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "membership_dues" }: PaymentModalProps) {
   const [step, setStep] = useState<PaymentStep>("input");
-  const [phone, setPhone] = useState("");
+  
   const [reference, setReference] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
@@ -44,7 +42,7 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
     if (!open) {
       setTimeout(() => {
         setStep("input");
-        setPhone("");
+        
         setReference("");
         setErrorMessage("");
         setErrorDetails(null);
@@ -99,10 +97,10 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
         // Continue anyway - the callback will handle it
       }
 
-      // Format phone number if provided (233XXXXXXXXX format)
+      // Use phone from profile if available
       let formattedPhone = "";
-      if (phone) {
-        formattedPhone = phone.replace(/\s+/g, "").replace(/-/g, "");
+      if (profile?.phone) {
+        formattedPhone = profile.phone.replace(/\s+/g, "").replace(/-/g, "");
         if (formattedPhone.startsWith("0")) {
           formattedPhone = "233" + formattedPhone.substring(1);
         } else if (!formattedPhone.startsWith("233")) {
@@ -190,25 +188,6 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
               <p className="text-sm text-muted-foreground">Amount to Pay</p>
               <p className="text-3xl font-bold text-primary">GHS {amount.toFixed(2)}</p>
               <p className="text-xs text-muted-foreground mt-1">Annual Membership Dues</p>
-            </div>
-
-            {/* Phone Input (Optional - for reference) */}
-            <div className="space-y-2">
-              <Label htmlFor="phone">Phone Number (Optional)</Label>
-              <div className="relative">
-                <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  id="phone"
-                  type="tel"
-                  placeholder="024 XXX XXXX"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                For your records only - you'll enter payment details on Hubtel's page
-              </p>
             </div>
 
             {/* Supported Payment Methods */}
