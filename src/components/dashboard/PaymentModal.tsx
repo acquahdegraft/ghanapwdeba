@@ -144,9 +144,10 @@ export function PaymentModal({ open, onOpenChange, amount = 100, paymentType = "
       console.log("Redirecting to Hubtel checkout:", data.checkoutUrl);
       toast.info("Redirecting to payment page...");
 
-      // Close the modal and redirect
+      // Open checkout in a new tab and close the modal
+      window.open(data.checkoutUrl, "_blank", "noopener,noreferrer");
       onOpenChange(false);
-      window.location.href = data.checkoutUrl;
+      setStep("input");
 
     } catch (error: unknown) {
       console.error("Payment initiation error:", error);
