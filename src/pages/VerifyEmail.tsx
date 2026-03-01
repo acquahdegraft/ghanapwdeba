@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { CheckCircle, XCircle, Loader2, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import logo from "@/assets/logo.jpeg";
+import { LandingFooter } from "@/components/landing/LandingFooter";
 
 export default function VerifyEmail() {
   const [searchParams] = useSearchParams();
@@ -22,7 +23,8 @@ export default function VerifyEmail() {
   }, [searchParams]);
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen flex-col">
+    <div className="flex flex-1">
       {/* Left Panel - Content */}
       <div className="flex flex-1 flex-col justify-center px-6 py-12 lg:px-8">
         <div className="mx-auto w-full max-w-md text-center">
@@ -122,6 +124,8 @@ export default function VerifyEmail() {
           </div>
         </div>
       </div>
+    </div>
+    <LandingFooter />
     </div>
   );
 }

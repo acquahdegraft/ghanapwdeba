@@ -13,6 +13,7 @@ import { z } from "zod";
 import { disabilityTypeOptions, genderOptions } from "@/lib/ghanaRegions";
 import { supabase } from "@/integrations/supabase/client";
 import logo from "@/assets/logo.jpeg";
+import { LandingFooter } from "@/components/landing/LandingFooter";
 
 const benefits = [
   "Access to business development resources",
@@ -145,7 +146,8 @@ export default function Register() {
   };
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen flex-col">
+    <div className="flex flex-1">
       {/* Left Panel - Benefits */}
       <div className="hidden lg:flex lg:w-2/5 gradient-primary relative overflow-hidden">
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTM2IDM0djItSDI0di0yaDEyek0zNiAyNHYySDI0di0yaDF6Ii8+PC9nPjwvZz48L3N2Zz4=')] opacity-30" />
@@ -369,6 +371,8 @@ export default function Register() {
           </p>
         </div>
       </div>
+    </div>
+    <LandingFooter />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
 import { DashboardSidebar } from "./DashboardSidebar";
+import { LandingFooter } from "@/components/landing/LandingFooter";
 import { DashboardHeader } from "./DashboardHeader";
 
 interface DashboardLayoutProps {
@@ -32,6 +33,8 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
             {children}
           </div>
         </main>
+
+        <LandingFooter />
       </div>
     </div>
   );
