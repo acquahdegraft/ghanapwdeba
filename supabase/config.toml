@@ -80,3 +80,8 @@ verify_jwt = false
 # Post-registration payment initiation (unauthenticated)
 # Security: validates email matches profile created within 10 minutes
 verify_jwt = false
+
+[functions.delete-members]
+# Admin-only function to fully delete members from auth (cascades to profiles)
+# Manually verifies JWT and checks admin role
+verify_jwt = false
