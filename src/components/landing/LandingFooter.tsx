@@ -67,11 +67,17 @@ export function LandingFooter() {
           <div>
             <h4 className="font-semibold mb-4">Contact</h4>
             <div className="space-y-2 text-sm text-muted-foreground">
+              <p>Care of Dobro African Cola</p>
               <p>Afri City, Nama, Kobe</p>
               <p>Digital Address: EG-158-4805</p>
+              <p>House No: DB*T-123D/5</p>
+              <p>Reg No: CG054390824</p>
               <p>+233 20 119 5588</p>
-              <a href="mailto:info@gpwdeba.org" className="hover:text-foreground">
+              <a href="mailto:info@gpwdeba.org" className="block hover:text-foreground">
                 info@gpwdeba.org
+              </a>
+              <a href="mailto:support@gpwdeba.org" className="block hover:text-foreground">
+                support@gpwdeba.org
               </a>
             </div>
           </div>
@@ -80,7 +86,10 @@ export function LandingFooter() {
         {/* Bottom Bar */}
         <div className="mt-8 pt-8 border-t flex flex-col items-center justify-between gap-4 md:flex-row">
           <p className="text-sm text-muted-foreground">
-            © 2025 GPWDEBA. All rights reserved.
+            © 2026 GPWDEBA. All rights reserved.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Powered & Developed by <span className="font-medium text-foreground">The Creative Computer Solutions</span>
           </p>
           <div className="flex items-center gap-4">
             {socialLinks.map((social) => (
