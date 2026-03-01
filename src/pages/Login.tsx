@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, LogIn, ArrowRight, Mail, RefreshCw } from "lucide-react";
+import { LandingFooter } from "@/components/landing/LandingFooter";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -90,7 +91,8 @@ export default function Login() {
   };
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen flex-col">
+    <div className="flex flex-1">
       {/* Left Panel - Form */}
       <div className="flex flex-1 flex-col justify-center px-6 py-12 lg:px-8">
         <div className="mx-auto w-full max-w-sm">
@@ -259,6 +261,8 @@ export default function Login() {
           </div>
         </div>
       </div>
+    </div>
+    <LandingFooter />
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { LandingFooter } from "@/components/landing/LandingFooter";
 import { z } from "zod";
 
 const emailSchema = z.object({
@@ -43,7 +44,8 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen flex-col">
+    <div className="flex flex-1">
       {/* Left Panel - Form */}
       <div className="flex flex-1 flex-col justify-center px-6 py-12 lg:px-8">
         <div className="mx-auto w-full max-w-sm">
@@ -169,6 +171,8 @@ export default function ForgotPassword() {
           </div>
         </div>
       </div>
+    </div>
+    <LandingFooter />
     </div>
   );
 }
