@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { LandingHeader } from "@/components/landing/LandingHeader";
 import { LandingFooter } from "@/components/landing/LandingFooter";
@@ -6,23 +6,41 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import { usePublicPortfolios } from "@/hooks/usePortfolio";
-import { Search, MapPin, Briefcase, ArrowRight, Loader2 } from "lucide-react";
+import { ghanaRegions, businessTypes } from "@/lib/ghanaRegions";
+import { Search, MapPin, Briefcase, ArrowRight, Loader2, X } from "lucide-react";
 
 export default function PublicPortfolios() {
   const { data: portfolios, isLoading } = usePublicPortfolios();
   const [search, setSearch] = useState("");
+  const [regionFilter, setRegionFilter] = useState("");
+  const [businessTypeFilter, setBusinessTypeFilter] = useState("");
+  const [serviceFilter, setServiceFilter] = useState("");
+
+  // Extract unique services from all portfolios for the filter dropdown
+  const allServices = useMemo(() => {
+    const set = new Set<string>();
+    (portfolios || []).forEach((p) => p.services?.forEach((s) => set.add(s)));
+    return Array.from(set).sort();
+  }, [portfolios]);
+
+  const hasActiveFilters = regionFilter || businessTypeFilter || serviceFilter;
 
   const filtered = (portfolios || []).filter((p) => {
     const q = search.toLowerCase();
-    return (
+    const matchesSearch =
       !q ||
       p.full_name?.toLowerCase().includes(q) ||
       p.headline?.toLowerCase().includes(q) ||
       p.business_name?.toLowerCase().includes(q) ||
       p.services?.some((s) => s.toLowerCase().includes(q)) ||
-      p.skills?.some((s) => s.toLowerCase().includes(q))
-    );
+      p.skills?.some((s) => s.toLowerCase().includes(q));
+    const matchesRegion = !regionFilter || p.region === regionFilter;
+    const matchesBusiness = !businessTypeFilter || p.business_type === businessTypeFilter;
+    const matchesService = !serviceFilter || p.services?.includes(serviceFilter);
+    return matchesSearch && matchesRegion && matchesBusiness && matchesService;
   });
 
   return (
@@ -44,6 +62,56 @@ export default function PublicPortfolios() {
                 className="pl-10 bg-background text-foreground"
               />
             </div>
+          </div>
+        </section>
+
+        <section className="container mx-auto px-4 pt-6">
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="w-full sm:w-48">
+              <label className="text-sm font-medium text-muted-foreground mb-1 block">Region</label>
+              <Select value={regionFilter} onValueChange={setRegionFilter}>
+                <SelectTrigger><SelectValue placeholder="All Regions" /></SelectTrigger>
+                <SelectContent>
+                  {ghanaRegions.map((r) => (
+                    <SelectItem key={r.name} value={r.name}>{r.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="w-full sm:w-48">
+              <label className="text-sm font-medium text-muted-foreground mb-1 block">Business Type</label>
+              <Select value={businessTypeFilter} onValueChange={setBusinessTypeFilter}>
+                <SelectTrigger><SelectValue placeholder="All Types" /></SelectTrigger>
+                <SelectContent>
+                  {businessTypes.map((t) => (
+                    <SelectItem key={t} value={t}>{t}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {allServices.length > 0 && (
+              <div className="w-full sm:w-48">
+                <label className="text-sm font-medium text-muted-foreground mb-1 block">Service</label>
+                <Select value={serviceFilter} onValueChange={setServiceFilter}>
+                  <SelectTrigger><SelectValue placeholder="All Services" /></SelectTrigger>
+                  <SelectContent>
+                    {allServices.map((s) => (
+                      <SelectItem key={s} value={s}>{s}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            {hasActiveFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => { setRegionFilter(""); setBusinessTypeFilter(""); setServiceFilter(""); }}
+                className="gap-1"
+              >
+                <X className="h-3.5 w-3.5" /> Clear filters
+              </Button>
+            )}
           </div>
         </section>
 
