@@ -40,7 +40,7 @@ import { MoreHorizontal, Search, UserCheck, UserX, Clock, Ban, Download, X, User
 import { MemberProfile, useUpdateMembershipStatus } from "@/hooks/useAdminData";
 import { useMembershipTypes } from "@/hooks/useMembershipTypes";
 import { useBulkUpdateMemberStatus, useBulkDeleteMembers } from "@/hooks/useBulkMemberActions";
-import { ghanaRegions } from "@/lib/ghanaRegions";
+import { ghanaRegions, educationLevels } from "@/lib/ghanaRegions";
 import { exportToCSV, formatDateForExport } from "@/lib/csvExport";
 import { MemberImport } from "./MemberImport";
 import { MemberDetailDialog } from "./MemberDetailDialog";
@@ -63,6 +63,8 @@ export function MembersTable({ members, isLoading }: MembersTableProps) {
   const [statusFilter, setStatusFilter] = useState("all");
   const [regionFilter, setRegionFilter] = useState("all");
   const [membershipTypeFilter, setMembershipTypeFilter] = useState("all");
+  const [educationFilter, setEducationFilter] = useState("all");
+  const [certificateFilter, setCertificateFilter] = useState("all");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [singleDeleteMember, setSingleDeleteMember] = useState<MemberProfile | null>(null);
@@ -94,9 +96,28 @@ export function MembersTable({ members, isLoading }: MembersTableProps) {
         membershipTypeFilter === "all" ||
         member.membership_type_id === membershipTypeFilter;
 
-      return matchesSearch && matchesStatus && matchesRegion && matchesMembershipType;
+      // Education level filter
+      const matchesEducation =
+        educationFilter === "all" || member.education_level === educationFilter;
+
+      // Certificate filter
+      const matchesCertificate =
+        certificateFilter === "all" ||
+        (certificateFilter === "has_bir" && !!member.bir_registration_number) ||
+        (certificateFilter === "has_nis" && !!member.nis_registration_number) ||
+        (certificateFilter === "has_vat" && !!member.vat_registration_number) ||
+        (certificateFilter === "has_reg" && member.has_certificate_of_registration) ||
+        (certificateFilter === "has_cont" && member.has_certificate_of_continuance) ||
+        (certificateFilter === "no_certs" &&
+          !member.bir_registration_number &&
+          !member.nis_registration_number &&
+          !member.vat_registration_number &&
+          !member.has_certificate_of_registration &&
+          !member.has_certificate_of_continuance);
+
+      return matchesSearch && matchesStatus && matchesRegion && matchesMembershipType && matchesEducation && matchesCertificate;
     });
-  }, [members, searchTerm, statusFilter, regionFilter, membershipTypeFilter]);
+  }, [members, searchTerm, statusFilter, regionFilter, membershipTypeFilter, educationFilter, certificateFilter]);
 
   const handleStatusUpdate = (
     member: MemberProfile,
@@ -167,6 +188,8 @@ export function MembersTable({ members, isLoading }: MembersTableProps) {
     setStatusFilter("all");
     setRegionFilter("all");
     setMembershipTypeFilter("all");
+    setEducationFilter("all");
+    setCertificateFilter("all");
   };
 
   const handleSelectAll = (checked: boolean) => {
@@ -240,7 +263,7 @@ export function MembersTable({ members, isLoading }: MembersTableProps) {
   };
 
   const hasActiveFilters =
-    searchTerm || statusFilter !== "all" || regionFilter !== "all" || membershipTypeFilter !== "all";
+    searchTerm || statusFilter !== "all" || regionFilter !== "all" || membershipTypeFilter !== "all" || educationFilter !== "all" || certificateFilter !== "all";
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -321,6 +344,33 @@ export function MembersTable({ members, isLoading }: MembersTableProps) {
                     {type.name}
                   </SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+            <Select value={educationFilter} onValueChange={setEducationFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Education Level" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Education</SelectItem>
+                {educationLevels.map((level) => (
+                  <SelectItem key={level.value} value={level.value}>
+                    {level.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={certificateFilter} onValueChange={setCertificateFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Certificates" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Certificates</SelectItem>
+                <SelectItem value="has_bir">Has BIR Reg.</SelectItem>
+                <SelectItem value="has_nis">Has NIS Reg.</SelectItem>
+                <SelectItem value="has_vat">Has VAT Reg.</SelectItem>
+                <SelectItem value="has_reg">Has Cert. of Registration</SelectItem>
+                <SelectItem value="has_cont">Has Cert. of Continuance</SelectItem>
+                <SelectItem value="no_certs">No Certificates</SelectItem>
               </SelectContent>
             </Select>
             {hasActiveFilters && (
