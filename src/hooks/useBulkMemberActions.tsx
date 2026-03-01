@@ -8,13 +8,28 @@ export function useBulkDeleteMembers() {
 
   return useMutation({
     mutationFn: async ({ profileIds }: { profileIds: string[] }) => {
-      const { error } = await supabase
+      // First, look up the user_ids for these profile IDs
+      const { data: profiles, error: lookupError } = await supabase
         .from("profiles")
-        .delete()
+        .select("user_id")
         .in("id", profileIds);
 
+      if (lookupError) throw lookupError;
+
+      const userIds = profiles?.map((p) => p.user_id) || [];
+      if (userIds.length === 0) throw new Error("No matching users found");
+
+      // Call edge function to delete from auth (cascades to profiles)
+      const { data, error } = await supabase.functions.invoke("delete-members", {
+        body: { userIds },
+      });
+
       if (error) throw error;
-      return { count: profileIds.length };
+      if (data?.errors?.length > 0) {
+        console.error("Some deletions failed:", data.errors);
+      }
+
+      return { count: data?.deleted || 0 };
     },
     onSuccess: ({ count }) => {
       queryClient.invalidateQueries({ queryKey: ["admin", "members"] });
