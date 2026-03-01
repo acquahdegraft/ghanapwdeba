@@ -1,6 +1,7 @@
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { AnnouncementsBanner } from "@/components/dashboard/AnnouncementsBanner";
+import { ProfileCompletionCard } from "@/components/dashboard/ProfileCompletionCard";
 import { Calendar, MapPin, Briefcase, Phone, Mail, Shield, Star, Award, Building2 } from "lucide-react";
 import { useProfile } from "@/hooks/useProfile";
 import { useMemberDues } from "@/hooks/useMemberDues";
@@ -155,7 +156,8 @@ export default function Dashboard() {
         </div>
 
         {/* Quick Actions Column */}
-        <div>
+        <div className="space-y-6">
+          <ProfileCompletionCard />
           <QuickActions />
         </div>
       </div>
