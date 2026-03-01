@@ -20,6 +20,20 @@ export interface Profile {
   avatar_url: string | null;
   created_at: string;
   updated_at: string;
+  // New business registration fields
+  business_address: string | null;
+  mailing_address: string | null;
+  education_level: string | null;
+  special_skills: string | null;
+  num_permanent_staff: number | null;
+  num_temporary_staff: number | null;
+  bank_name: string | null;
+  bank_branch: string | null;
+  bir_registration_number: string | null;
+  nis_registration_number: string | null;
+  vat_registration_number: string | null;
+  has_certificate_of_registration: boolean;
+  has_certificate_of_continuance: boolean;
 }
 
 // Helper function to get signed URL for avatar
