@@ -12,6 +12,7 @@ import {
   Shield,
   Users,
   MapPin,
+  Palette,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import logoImg from "@/assets/logo.jpeg";
@@ -27,6 +28,7 @@ const navigation = [
   { name: "Member Directory", href: "/dashboard/directory", icon: Users },
   { name: "Events", href: "/dashboard/events", icon: Calendar },
   { name: "Resources", href: "/dashboard/resources", icon: FileText },
+  { name: "My Portfolio", href: "/dashboard/portfolio", icon: Palette },
 ];
 
 const adminNav = [
