@@ -85,3 +85,8 @@ verify_jwt = false
 # Admin-only function to fully delete members from auth (cascades to profiles)
 # Manually verifies JWT and checks admin role
 verify_jwt = false
+
+[functions.send-profile-reminder]
+# Admin/cron function to email members with incomplete profiles
+# Verifies caller is admin or service role
+verify_jwt = false
