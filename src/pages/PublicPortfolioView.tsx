@@ -14,7 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
   MapPin, Briefcase, Globe, Clock, ArrowLeft, Loader2,
-  Mail, Phone, Send, ExternalLink,
+  Mail, Phone, Send, ExternalLink, ImageIcon,
 } from "lucide-react";
 
 export default function PublicPortfolioView() {
@@ -164,6 +164,36 @@ export default function PublicPortfolioView() {
                     <div className="flex flex-wrap gap-2">
                       {portfolio.skills.map((s, i) => (
                         <Badge key={i} variant="secondary" className="py-1.5 px-3">{s}</Badge>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Work Samples Gallery */}
+              {portfolio.portfolio_images?.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <ImageIcon className="h-5 w-5" /> Work Samples
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      {portfolio.portfolio_images.map((img, i) => (
+                        <a
+                          key={i}
+                          href={img}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="group aspect-square overflow-hidden rounded-lg border bg-muted"
+                        >
+                          <img
+                            src={img}
+                            alt={`Work sample ${i + 1}`}
+                            className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                          />
+                        </a>
                       ))}
                     </div>
                   </CardContent>

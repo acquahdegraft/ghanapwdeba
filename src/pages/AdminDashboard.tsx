@@ -11,8 +11,9 @@ import { EventsManagement } from "@/components/admin/EventsManagement";
 import { ResourcesManagement } from "@/components/admin/ResourcesManagement";
 import { useAllMembers, useAllPayments } from "@/hooks/useAdminData";
 import { RoleManagement } from "@/components/admin/RoleManagement";
+import { PortfolioModeration } from "@/components/admin/PortfolioModeration";
 import { useCurrentUserPermissions } from "@/hooks/useCurrentUserPermissions";
-import { Users, CreditCard, DollarSign, Megaphone, Calendar, BarChart3, FileText, Shield } from "lucide-react";
+import { Users, CreditCard, DollarSign, Megaphone, Calendar, BarChart3, FileText, Shield, Palette } from "lucide-react";
 
 interface AdminTab {
   value: string;
@@ -29,6 +30,7 @@ const ALL_TABS: AdminTab[] = [
   { value: "events", label: "Events", icon: <Calendar className="h-4 w-4" />, permission: "manage_content" },
   { value: "resources", label: "Resources", icon: <FileText className="h-4 w-4" />, permission: "manage_content" },
   { value: "announcements", label: "Announcements", icon: <Megaphone className="h-4 w-4" />, permission: "manage_content" },
+  { value: "portfolios", label: "Portfolios", icon: <Palette className="h-4 w-4" />, permission: "manage_content" },
   { value: "roles", label: "Roles & Permissions", icon: <Shield className="h-4 w-4" />, permission: "manage_roles" },
 ];
 
@@ -111,6 +113,10 @@ export default function AdminDashboard() {
 
           <TabsContent value="announcements">
             <AnnouncementsManagement />
+          </TabsContent>
+
+          <TabsContent value="portfolios">
+            <PortfolioModeration />
           </TabsContent>
 
           <TabsContent value="roles">

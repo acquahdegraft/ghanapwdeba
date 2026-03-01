@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,14 +8,20 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useMyPortfolio, useSavePortfolio } from "@/hooks/usePortfolio";
+import { useMyPortfolio, useSavePortfolio, uploadPortfolioImage, deletePortfolioImage } from "@/hooks/usePortfolio";
 import { useProfile } from "@/hooks/useProfile";
-import { Loader2, Plus, X, Eye, Globe, Lock, Briefcase, Wrench, User, Link as LinkIcon } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
+import {
+  Loader2, Plus, X, Eye, Globe, Lock, Briefcase, Wrench, User,
+  Link as LinkIcon, ImagePlus, Trash2,
+} from "lucide-react";
 import { Link } from "react-router-dom";
 
 export default function PortfolioEditor() {
   const { data: portfolio, isLoading } = useMyPortfolio();
   const { data: profile } = useProfile();
+  const { user } = useAuth();
   const saveMutation = useSavePortfolio();
 
   const isActive = profile?.membership_status === "active";
@@ -31,6 +37,9 @@ export default function PortfolioEditor() {
   const [newService, setNewService] = useState("");
   const [newSkill, setNewSkill] = useState("");
   const [slug, setSlug] = useState("");
+  const [images, setImages] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (portfolio) {
@@ -43,8 +52,8 @@ export default function PortfolioEditor() {
       setSocialLinks(portfolio.social_links || {});
       setIsPublished(portfolio.is_published);
       setSlug(portfolio.slug || "");
+      setImages(portfolio.portfolio_images || []);
     } else if (profile) {
-      // Generate default slug from name
       const defaultSlug = (profile.full_name || "member")
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
@@ -67,10 +76,41 @@ export default function PortfolioEditor() {
     }
   };
 
-  const handleSave = () => {
-    if (!headline.trim()) {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || !user) return;
+    if (images.length + files.length > 10) {
+      toast.error("Maximum 10 images allowed.");
       return;
     }
+    setUploading(true);
+    try {
+      const newUrls: string[] = [];
+      for (const file of Array.from(files)) {
+        if (file.size > 5 * 1024 * 1024) {
+          toast.error(`${file.name} is too large (max 5MB).`);
+          continue;
+        }
+        const url = await uploadPortfolioImage(user.id, file);
+        newUrls.push(url);
+      }
+      setImages([...images, ...newUrls]);
+      toast.success(`${newUrls.length} image(s) uploaded.`);
+    } catch {
+      toast.error("Failed to upload image.");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleRemoveImage = async (url: string) => {
+    await deletePortfolioImage(url);
+    setImages(images.filter((u) => u !== url));
+  };
+
+  const handleSave = () => {
+    if (!headline.trim()) return;
     const cleanSlug = slug
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
@@ -86,6 +126,7 @@ export default function PortfolioEditor() {
       website_url: websiteUrl || null,
       social_links: socialLinks,
       is_published: isPublished,
+      portfolio_images: images,
     });
   };
 
@@ -151,10 +192,11 @@ export default function PortfolioEditor() {
         </Card>
 
         <Tabs defaultValue="about" className="space-y-4">
-          <TabsList>
+          <TabsList className="flex flex-wrap h-auto">
             <TabsTrigger value="about"><User className="mr-1.5 h-4 w-4" />About</TabsTrigger>
             <TabsTrigger value="services"><Briefcase className="mr-1.5 h-4 w-4" />Services</TabsTrigger>
             <TabsTrigger value="skills"><Wrench className="mr-1.5 h-4 w-4" />Skills</TabsTrigger>
+            <TabsTrigger value="gallery"><ImagePlus className="mr-1.5 h-4 w-4" />Gallery</TabsTrigger>
             <TabsTrigger value="links"><LinkIcon className="mr-1.5 h-4 w-4" />Links</TabsTrigger>
           </TabsList>
 
@@ -235,6 +277,58 @@ export default function PortfolioEditor() {
                   ))}
                   {skills.length === 0 && <p className="text-sm text-muted-foreground">No skills added yet.</p>}
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Gallery Tab */}
+          <TabsContent value="gallery">
+            <Card>
+              <CardHeader>
+                <CardTitle>Work Samples & Photos</CardTitle>
+                <CardDescription>Upload images of your products, services, or workspace (max 10, 5MB each)</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading || images.length >= 10}
+                  >
+                    {uploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ImagePlus className="mr-2 h-4 w-4" />}
+                    {uploading ? "Uploading..." : "Upload Images"}
+                  </Button>
+                  <p className="mt-1 text-xs text-muted-foreground">{images.length}/10 images</p>
+                </div>
+                {images.length > 0 ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                    {images.map((url, i) => (
+                      <div key={i} className="group relative aspect-square rounded-lg overflow-hidden border bg-muted">
+                        <img src={url} alt={`Portfolio ${i + 1}`} className="h-full w-full object-cover" />
+                        <button
+                          onClick={() => handleRemoveImage(url)}
+                          className="absolute top-1.5 right-1.5 rounded-full bg-destructive p-1.5 text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed py-12 text-muted-foreground">
+                    <ImagePlus className="h-10 w-10 mb-2" />
+                    <p className="text-sm">No images yet. Upload work samples to showcase your services.</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
