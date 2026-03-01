@@ -135,5 +135,25 @@ export const businessTypes = [
   "Construction",
   "Hospitality & Tourism",
   "Fashion & Textiles",
-  "Other"
+  "Tyre Shop",
+  "Hardware",
+  "Plumbing",
+  "Electrical",
+  "Landscaping",
+  "Car Wash",
+  "Catering",
+  "Day-care / Pre-school",
+  "Taxi / Ride Service",
+  "Bar / Restaurant",
+  "Neighbourhood Shop / Parlour",
+  "Air Conditioning & Refrigeration",
+  "Other",
+];
+
+export const educationLevels = [
+  { label: "Primary School", value: "primary" },
+  { label: "Secondary School (JHS/SHS)", value: "secondary" },
+  { label: "Technical / Vocational School", value: "technical_vocational" },
+  { label: "Tertiary (University / Polytechnic)", value: "tertiary" },
+  { label: "No Formal Education", value: "none" },
 ];
