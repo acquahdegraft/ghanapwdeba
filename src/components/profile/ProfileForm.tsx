@@ -223,7 +223,7 @@ export function ProfileForm() {
                   <AvatarImage src={avatarUrl || undefined} alt={`${profile?.full_name}'s profile photo`} />
                   <AvatarFallback className="bg-primary text-primary-foreground text-2xl">{initials}</AvatarFallback>
                 </Avatar>
-                <label htmlFor="avatar-upload" className="absolute -bottom-2 -right-2 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-accent text-accent-foreground shadow-lg transition-transform hover:scale-110" aria-label="Upload new profile photo">
+                <label htmlFor="avatar-upload" className="absolute -bottom-2 -right-2 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg border-2 border-background transition-transform hover:scale-110" aria-label="Upload new profile photo">
                   {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
                 </label>
                 <input id="avatar-upload" type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} disabled={uploading} />
