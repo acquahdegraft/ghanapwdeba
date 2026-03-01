@@ -1,0 +1,1 @@
+ALTER VIEW public.admin_members SET (security_invoker = on);

@@ -36,13 +36,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { MoreHorizontal, Search, UserCheck, UserX, Clock, Ban, Download, X, Users, Trash2 } from "lucide-react";
+import { MoreHorizontal, Search, UserCheck, UserX, Clock, Ban, Download, X, Users, Trash2, Eye } from "lucide-react";
 import { MemberProfile, useUpdateMembershipStatus } from "@/hooks/useAdminData";
 import { useMembershipTypes } from "@/hooks/useMembershipTypes";
 import { useBulkUpdateMemberStatus, useBulkDeleteMembers } from "@/hooks/useBulkMemberActions";
 import { ghanaRegions } from "@/lib/ghanaRegions";
 import { exportToCSV, formatDateForExport } from "@/lib/csvExport";
 import { MemberImport } from "./MemberImport";
+import { MemberDetailDialog } from "./MemberDetailDialog";
 
 interface MembersTableProps {
   members: MemberProfile[];
@@ -65,6 +66,7 @@ export function MembersTable({ members, isLoading }: MembersTableProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [singleDeleteMember, setSingleDeleteMember] = useState<MemberProfile | null>(null);
+  const [detailMember, setDetailMember] = useState<MemberProfile | null>(null);
   
   const updateStatus = useUpdateMembershipStatus();
   const bulkUpdateStatus = useBulkUpdateMemberStatus();
@@ -131,10 +133,24 @@ export function MembersTable({ members, isLoading }: MembersTableProps) {
     const columns = [
       { key: "full_name" as const, label: "Full Name" },
       { key: "email" as const, label: "Email" },
+      { key: "gender" as const, label: "Gender" },
       { key: "business_name" as const, label: "Business Name" },
       { key: "business_type" as const, label: "Business Type" },
+      { key: "business_address" as const, label: "Business Address" },
+      { key: "mailing_address" as const, label: "Mailing Address" },
       { key: "region" as const, label: "Region" },
-      { key: "city" as const, label: "City" },
+      { key: "city" as const, label: "City/District" },
+      { key: "education_level" as const, label: "Education Level" },
+      { key: "special_skills" as const, label: "Special Skills" },
+      { key: "bir_registration_number" as const, label: "BIR Reg. No." },
+      { key: "nis_registration_number" as const, label: "NIS Reg. No." },
+      { key: "vat_registration_number" as const, label: "VAT Reg. No." },
+      { key: "has_certificate_of_registration" as const, label: "Cert. of Registration" },
+      { key: "has_certificate_of_continuance" as const, label: "Cert. of Continuance" },
+      { key: "num_permanent_staff" as const, label: "Permanent Staff" },
+      { key: "num_temporary_staff" as const, label: "Temporary Staff" },
+      { key: "bank_name" as const, label: "Bank/Financial Institution" },
+      { key: "bank_branch" as const, label: "Bank Branch" },
       { key: "membership_status" as const, label: "Status" },
       { key: "membership_type_name" as const, label: "Membership Type" },
       { key: "membership_start_date_formatted" as const, label: "Start Date" },
@@ -193,10 +209,24 @@ export function MembersTable({ members, isLoading }: MembersTableProps) {
     const columns = [
       { key: "full_name" as const, label: "Full Name" },
       { key: "email" as const, label: "Email" },
+      { key: "gender" as const, label: "Gender" },
       { key: "business_name" as const, label: "Business Name" },
       { key: "business_type" as const, label: "Business Type" },
+      { key: "business_address" as const, label: "Business Address" },
+      { key: "mailing_address" as const, label: "Mailing Address" },
       { key: "region" as const, label: "Region" },
-      { key: "city" as const, label: "City" },
+      { key: "city" as const, label: "City/District" },
+      { key: "education_level" as const, label: "Education Level" },
+      { key: "special_skills" as const, label: "Special Skills" },
+      { key: "bir_registration_number" as const, label: "BIR Reg. No." },
+      { key: "nis_registration_number" as const, label: "NIS Reg. No." },
+      { key: "vat_registration_number" as const, label: "VAT Reg. No." },
+      { key: "has_certificate_of_registration" as const, label: "Cert. of Registration" },
+      { key: "has_certificate_of_continuance" as const, label: "Cert. of Continuance" },
+      { key: "num_permanent_staff" as const, label: "Permanent Staff" },
+      { key: "num_temporary_staff" as const, label: "Temporary Staff" },
+      { key: "bank_name" as const, label: "Bank/Financial Institution" },
+      { key: "bank_branch" as const, label: "Bank Branch" },
       { key: "membership_status" as const, label: "Status" },
       { key: "membership_type_name" as const, label: "Membership Type" },
       { key: "membership_start_date_formatted" as const, label: "Start Date" },
@@ -513,6 +543,12 @@ export function MembersTable({ members, isLoading }: MembersTableProps) {
                               Suspend Membership
                             </DropdownMenuItem>
                             <DropdownMenuItem
+                              onClick={() => setDetailMember(member)}
+                            >
+                              <Eye className="mr-2 h-4 w-4" />
+                              View Details
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
                               className="text-destructive focus:text-destructive"
                               onClick={() => setSingleDeleteMember(member)}
                             >
@@ -532,6 +568,12 @@ export function MembersTable({ members, isLoading }: MembersTableProps) {
         <div className="mt-4 text-sm text-muted-foreground">
           Showing {filteredMembers?.length || 0} of {members?.length || 0} members
         </div>
+
+        <MemberDetailDialog
+          member={detailMember}
+          open={!!detailMember}
+          onOpenChange={(open) => { if (!open) setDetailMember(null); }}
+        />
       </CardContent>
     </Card>
   );
