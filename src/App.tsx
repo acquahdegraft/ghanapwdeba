@@ -31,6 +31,9 @@ import CoordinatorDashboard from "./pages/CoordinatorDashboard";
 import PaymentCallback from "./pages/PaymentCallback";
 import HelpSupport from "./pages/HelpSupport";
 import Settings from "./pages/Settings";
+import PortfolioEditor from "./pages/PortfolioEditor";
+import PublicPortfolios from "./pages/PublicPortfolios";
+import PublicPortfolioView from "./pages/PublicPortfolioView";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -155,6 +158,17 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/dashboard/portfolio"
+              element={
+                <ProtectedRoute>
+                  <PortfolioEditor />
+                </ProtectedRoute>
+              }
+            />
+            {/* Public portfolio pages */}
+            <Route path="/portfolios" element={<PublicPortfolios />} />
+            <Route path="/portfolios/:slug" element={<PublicPortfolioView />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

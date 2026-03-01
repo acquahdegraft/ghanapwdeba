@@ -289,6 +289,57 @@ export type Database = {
         }
         Relationships: []
       }
+      portfolios: {
+        Row: {
+          bio: string | null
+          created_at: string
+          headline: string
+          id: string
+          is_published: boolean
+          portfolio_images: string[] | null
+          services: string[] | null
+          skills: string[] | null
+          slug: string
+          social_links: Json | null
+          updated_at: string
+          user_id: string
+          website_url: string | null
+          years_of_experience: number | null
+        }
+        Insert: {
+          bio?: string | null
+          created_at?: string
+          headline?: string
+          id?: string
+          is_published?: boolean
+          portfolio_images?: string[] | null
+          services?: string[] | null
+          skills?: string[] | null
+          slug: string
+          social_links?: Json | null
+          updated_at?: string
+          user_id: string
+          website_url?: string | null
+          years_of_experience?: number | null
+        }
+        Update: {
+          bio?: string | null
+          created_at?: string
+          headline?: string
+          id?: string
+          is_published?: boolean
+          portfolio_images?: string[] | null
+          services?: string[] | null
+          skills?: string[] | null
+          slug?: string
+          social_links?: Json | null
+          updated_at?: string
+          user_id?: string
+          website_url?: string | null
+          years_of_experience?: number | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -688,6 +739,27 @@ export type Database = {
           updated_at?: string | null
           user_id?: string | null
           webhook_token?: never
+        }
+        Relationships: []
+      }
+      public_portfolios: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          business_name: string | null
+          business_type: string | null
+          city: string | null
+          full_name: string | null
+          headline: string | null
+          id: string | null
+          portfolio_images: string[] | null
+          region: string | null
+          services: string[] | null
+          skills: string[] | null
+          slug: string | null
+          social_links: Json | null
+          website_url: string | null
+          years_of_experience: number | null
         }
         Relationships: []
       }
