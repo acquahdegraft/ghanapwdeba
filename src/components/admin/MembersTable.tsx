@@ -64,6 +64,7 @@ export function MembersTable({ members, isLoading }: MembersTableProps) {
   const [membershipTypeFilter, setMembershipTypeFilter] = useState("all");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [singleDeleteMember, setSingleDeleteMember] = useState<MemberProfile | null>(null);
   
   const updateStatus = useUpdateMembershipStatus();
   const bulkUpdateStatus = useBulkUpdateMemberStatus();
@@ -380,6 +381,32 @@ export function MembersTable({ members, isLoading }: MembersTableProps) {
           </AlertDialogContent>
         </AlertDialog>
 
+        {/* Single Delete Confirmation Dialog */}
+        <AlertDialog open={!!singleDeleteMember} onOpenChange={(open) => { if (!open) setSingleDeleteMember(null); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete {singleDeleteMember?.full_name}?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete this member's account and all associated data.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={() => {
+                  if (!singleDeleteMember) return;
+                  bulkDelete.mutate({ profileIds: [singleDeleteMember.id] }, {
+                    onSuccess: () => setSingleDeleteMember(null),
+                  });
+                }}
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
         {isLoading ? (
           <div className="flex h-32 items-center justify-center">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
@@ -484,6 +511,13 @@ export function MembersTable({ members, isLoading }: MembersTableProps) {
                             >
                               <Ban className="mr-2 h-4 w-4 text-gray-600" />
                               Suspend Membership
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onClick={() => setSingleDeleteMember(member)}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete Member
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
