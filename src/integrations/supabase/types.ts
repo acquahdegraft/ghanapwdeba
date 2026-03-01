@@ -304,6 +304,7 @@ export type Database = {
           social_links: Json | null
           updated_at: string
           user_id: string
+          view_count: number
           website_url: string | null
           years_of_experience: number | null
         }
@@ -321,6 +322,7 @@ export type Database = {
           social_links?: Json | null
           updated_at?: string
           user_id: string
+          view_count?: number
           website_url?: string | null
           years_of_experience?: number | null
         }
@@ -338,6 +340,7 @@ export type Database = {
           social_links?: Json | null
           updated_at?: string
           user_id?: string
+          view_count?: number
           website_url?: string | null
           years_of_experience?: number | null
         }
@@ -762,6 +765,7 @@ export type Database = {
           skills: string[] | null
           slug: string | null
           social_links: Json | null
+          view_count: number | null
           website_url: string | null
           years_of_experience: number | null
         }
@@ -787,6 +791,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      increment_portfolio_view: {
+        Args: { portfolio_slug: string }
+        Returns: undefined
       }
       is_admin: { Args: never; Returns: boolean }
     }
