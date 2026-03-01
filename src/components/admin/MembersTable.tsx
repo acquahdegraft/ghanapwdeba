@@ -36,7 +36,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { MoreHorizontal, Search, UserCheck, UserX, Clock, Ban, Download, X, Users, Trash2, Eye } from "lucide-react";
+import { MoreHorizontal, Search, UserCheck, UserX, Clock, Ban, Download, X, Users, Trash2, Eye, Mail } from "lucide-react";
 import { MemberProfile, useUpdateMembershipStatus } from "@/hooks/useAdminData";
 import { useMembershipTypes } from "@/hooks/useMembershipTypes";
 import { useBulkUpdateMemberStatus, useBulkDeleteMembers } from "@/hooks/useBulkMemberActions";
@@ -44,6 +44,10 @@ import { ghanaRegions, educationLevels } from "@/lib/ghanaRegions";
 import { exportToCSV, formatDateForExport } from "@/lib/csvExport";
 import { MemberImport } from "./MemberImport";
 import { MemberDetailDialog } from "./MemberDetailDialog";
+import { getProfileCompletion } from "@/lib/profileCompletion";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { Progress } from "@/components/ui/progress";
 
 interface MembersTableProps {
   members: MemberProfile[];
@@ -69,11 +73,28 @@ export function MembersTable({ members, isLoading }: MembersTableProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [singleDeleteMember, setSingleDeleteMember] = useState<MemberProfile | null>(null);
   const [detailMember, setDetailMember] = useState<MemberProfile | null>(null);
+  const [sendingReminders, setSendingReminders] = useState(false);
   
   const updateStatus = useUpdateMembershipStatus();
   const bulkUpdateStatus = useBulkUpdateMemberStatus();
   const bulkDelete = useBulkDeleteMembers();
   const { data: membershipTypes = [] } = useMembershipTypes();
+
+  const handleSendProfileReminders = async () => {
+    setSendingReminders(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-profile-reminder", {
+        body: { threshold: 80 },
+      });
+      if (error) throw error;
+      toast.success(`Profile reminders sent to ${data.sent} member(s)`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      toast.error("Failed to send reminders: " + message);
+    } finally {
+      setSendingReminders(false);
+    }
+  };
 
   const filteredMembers = useMemo(() => {
     return members?.filter((member) => {
@@ -288,6 +309,10 @@ export function MembersTable({ members, isLoading }: MembersTableProps) {
           </div>
           <div className="flex items-center gap-2">
             <MemberImport />
+            <Button variant="outline" onClick={handleSendProfileReminders} disabled={sendingReminders}>
+              <Mail className="mr-2 h-4 w-4" />
+              {sendingReminders ? "Sending..." : "Send Profile Reminders"}
+            </Button>
             <Button variant="outline" onClick={handleExportCSV} disabled={!filteredMembers?.length}>
               <Download className="mr-2 h-4 w-4" />
               Export CSV
@@ -510,6 +535,7 @@ export function MembersTable({ members, isLoading }: MembersTableProps) {
                   <TableHead>Location</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Expiry Date</TableHead>
+                  <TableHead>Profile</TableHead>
                   <TableHead>Joined</TableHead>
                   <TableHead className="w-12"></TableHead>
                 </TableRow>
@@ -517,7 +543,7 @@ export function MembersTable({ members, isLoading }: MembersTableProps) {
               <TableBody>
                 {filteredMembers?.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center text-muted-foreground">
+                     <TableCell colSpan={9} className="text-center text-muted-foreground">
                       No members found
                     </TableCell>
                   </TableRow>
@@ -552,6 +578,19 @@ export function MembersTable({ members, isLoading }: MembersTableProps) {
                         {member.membership_expiry_date
                           ? format(parseISO(member.membership_expiry_date), "MMM d, yyyy")
                           : "—"}
+                      </TableCell>
+                      <TableCell>
+                        {(() => {
+                          const pct = getProfileCompletion(member as unknown as Record<string, unknown>);
+                          return (
+                            <div className="flex items-center gap-2 min-w-[80px]">
+                              <Progress value={pct} className="h-2 flex-1" />
+                              <span className={`text-xs font-medium ${pct === 100 ? "text-success" : pct >= 60 ? "text-foreground" : "text-destructive"}`}>
+                                {pct}%
+                              </span>
+                            </div>
+                          );
+                        })()}
                       </TableCell>
                       <TableCell>
                         {format(parseISO(member.created_at), "MMM d, yyyy")}
