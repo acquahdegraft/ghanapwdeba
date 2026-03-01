@@ -491,63 +491,105 @@ export type Database = {
       admin_members: {
         Row: {
           avatar_url: string | null
+          bank_branch: string | null
+          bank_name: string | null
+          bir_registration_number: string | null
+          business_address: string | null
           business_name: string | null
           business_type: string | null
           city: string | null
           created_at: string | null
+          education_level: string | null
           email: string | null
           full_name: string | null
+          gender: string | null
+          has_certificate_of_continuance: boolean | null
+          has_certificate_of_registration: boolean | null
           id: string | null
           is_public_directory: boolean | null
+          mailing_address: string | null
           membership_expiry_date: string | null
           membership_start_date: string | null
           membership_status:
             | Database["public"]["Enums"]["membership_status"]
             | null
           membership_type_id: string | null
+          nis_registration_number: string | null
+          num_permanent_staff: number | null
+          num_temporary_staff: number | null
           region: string | null
+          special_skills: string | null
           updated_at: string | null
           user_id: string | null
+          vat_registration_number: string | null
         }
         Insert: {
           avatar_url?: string | null
+          bank_branch?: string | null
+          bank_name?: string | null
+          bir_registration_number?: string | null
+          business_address?: string | null
           business_name?: string | null
           business_type?: string | null
           city?: string | null
           created_at?: string | null
+          education_level?: string | null
           email?: string | null
           full_name?: string | null
+          gender?: string | null
+          has_certificate_of_continuance?: boolean | null
+          has_certificate_of_registration?: boolean | null
           id?: string | null
           is_public_directory?: boolean | null
+          mailing_address?: string | null
           membership_expiry_date?: string | null
           membership_start_date?: string | null
           membership_status?:
             | Database["public"]["Enums"]["membership_status"]
             | null
           membership_type_id?: string | null
+          nis_registration_number?: string | null
+          num_permanent_staff?: number | null
+          num_temporary_staff?: number | null
           region?: string | null
+          special_skills?: string | null
           updated_at?: string | null
           user_id?: string | null
+          vat_registration_number?: string | null
         }
         Update: {
           avatar_url?: string | null
+          bank_branch?: string | null
+          bank_name?: string | null
+          bir_registration_number?: string | null
+          business_address?: string | null
           business_name?: string | null
           business_type?: string | null
           city?: string | null
           created_at?: string | null
+          education_level?: string | null
           email?: string | null
           full_name?: string | null
+          gender?: string | null
+          has_certificate_of_continuance?: boolean | null
+          has_certificate_of_registration?: boolean | null
           id?: string | null
           is_public_directory?: boolean | null
+          mailing_address?: string | null
           membership_expiry_date?: string | null
           membership_start_date?: string | null
           membership_status?:
             | Database["public"]["Enums"]["membership_status"]
             | null
           membership_type_id?: string | null
+          nis_registration_number?: string | null
+          num_permanent_staff?: number | null
+          num_temporary_staff?: number | null
           region?: string | null
+          special_skills?: string | null
           updated_at?: string | null
           user_id?: string | null
+          vat_registration_number?: string | null
         }
         Relationships: [
           {
