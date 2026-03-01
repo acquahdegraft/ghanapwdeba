@@ -295,6 +295,7 @@ export type Database = {
           created_at: string
           headline: string
           id: string
+          is_featured: boolean
           is_published: boolean
           portfolio_images: string[] | null
           services: string[] | null
@@ -311,6 +312,7 @@ export type Database = {
           created_at?: string
           headline?: string
           id?: string
+          is_featured?: boolean
           is_published?: boolean
           portfolio_images?: string[] | null
           services?: string[] | null
@@ -327,6 +329,7 @@ export type Database = {
           created_at?: string
           headline?: string
           id?: string
+          is_featured?: boolean
           is_published?: boolean
           portfolio_images?: string[] | null
           services?: string[] | null
@@ -752,6 +755,7 @@ export type Database = {
           full_name: string | null
           headline: string | null
           id: string | null
+          is_featured: boolean | null
           portfolio_images: string[] | null
           region: string | null
           services: string[] | null

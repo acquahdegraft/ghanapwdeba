@@ -4,6 +4,7 @@ import { ArrowRight, Users, Shield, Calendar, FileText, ChevronRight } from "luc
 import { Button } from "@/components/ui/button";
 import { LandingHeader } from "@/components/landing/LandingHeader";
 import { LandingFooter } from "@/components/landing/LandingFooter";
+import { FeaturedPortfolios } from "@/components/landing/FeaturedPortfolios";
 
 const SITE_NAME = "Ghana Persons with Disability Entrepreneurs and Business Association";
 
@@ -119,6 +120,9 @@ const Index = () => {
           </div>
         </div>
       </section>
+
+      {/* Featured Portfolios */}
+      <FeaturedPortfolios />
 
       {/* CTA Section */}
       <section className="gradient-primary py-16">
