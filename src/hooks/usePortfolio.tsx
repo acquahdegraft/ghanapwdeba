@@ -17,6 +17,7 @@ export interface Portfolio {
   social_links: Record<string, string>;
   is_published: boolean;
   is_featured: boolean;
+  view_count: number;
   created_at: string;
   updated_at: string;
 }
@@ -33,6 +34,7 @@ export interface PublicPortfolio {
   website_url: string | null;
   social_links: Record<string, string>;
   is_featured: boolean;
+  view_count: number;
   full_name: string;
   business_name: string | null;
   business_type: string | null;
@@ -220,9 +222,12 @@ export async function uploadPortfolioImage(userId: string, file: File): Promise<
 }
 
 export async function deletePortfolioImage(imageUrl: string): Promise<void> {
-  // Extract path from public URL
   const match = imageUrl.match(/portfolio-images\/(.+)$/);
   if (!match) return;
   const { error } = await supabase.storage.from("portfolio-images").remove([match[1]]);
   if (error) console.error("Failed to delete image:", error);
+}
+
+export async function trackPortfolioView(slug: string): Promise<void> {
+  await supabase.rpc("increment_portfolio_view", { portfolio_slug: slug });
 }

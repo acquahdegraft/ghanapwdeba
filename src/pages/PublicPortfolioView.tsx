@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { LandingHeader } from "@/components/landing/LandingHeader";
 import { LandingFooter } from "@/components/landing/LandingFooter";
@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { usePublicPortfolioBySlug } from "@/hooks/usePortfolio";
+import { usePublicPortfolioBySlug, trackPortfolioView } from "@/hooks/usePortfolio";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
@@ -25,6 +25,15 @@ export default function PublicPortfolioView() {
   const [contactEmail, setContactEmail] = useState("");
   const [contactMessage, setContactMessage] = useState("");
   const [sending, setSending] = useState(false);
+  const viewTracked = useRef(false);
+
+  // Track view once per page load
+  useEffect(() => {
+    if (slug && portfolio && !viewTracked.current) {
+      viewTracked.current = true;
+      trackPortfolioView(slug);
+    }
+  }, [slug, portfolio]);
 
   const handleContact = async (e: React.FormEvent) => {
     e.preventDefault();

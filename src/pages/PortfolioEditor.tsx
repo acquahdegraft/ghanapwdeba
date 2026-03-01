@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import {
   Loader2, Plus, X, Eye, Globe, Lock, Briefcase, Wrench, User,
-  Link as LinkIcon, ImagePlus, Trash2,
+  Link as LinkIcon, ImagePlus, Trash2, GripVertical, ChevronLeft, ChevronRight,
+  BarChart3,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -109,6 +110,35 @@ export default function PortfolioEditor() {
     setImages(images.filter((u) => u !== url));
   };
 
+  const moveImage = useCallback((fromIndex: number, toIndex: number) => {
+    if (toIndex < 0 || toIndex >= images.length) return;
+    const updated = [...images];
+    const [moved] = updated.splice(fromIndex, 1);
+    updated.splice(toIndex, 0, moved);
+    setImages(updated);
+  }, [images]);
+
+  // Drag and drop handlers
+  const dragItem = useRef<number | null>(null);
+  const dragOverItem = useRef<number | null>(null);
+
+  const handleDragStart = (index: number) => {
+    dragItem.current = index;
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    dragOverItem.current = index;
+  };
+
+  const handleDrop = () => {
+    if (dragItem.current !== null && dragOverItem.current !== null && dragItem.current !== dragOverItem.current) {
+      moveImage(dragItem.current, dragOverItem.current);
+    }
+    dragItem.current = null;
+    dragOverItem.current = null;
+  };
+
   const handleSave = () => {
     if (!headline.trim()) return;
     const cleanSlug = slug
@@ -198,6 +228,7 @@ export default function PortfolioEditor() {
             <TabsTrigger value="skills"><Wrench className="mr-1.5 h-4 w-4" />Skills</TabsTrigger>
             <TabsTrigger value="gallery"><ImagePlus className="mr-1.5 h-4 w-4" />Gallery</TabsTrigger>
             <TabsTrigger value="links"><LinkIcon className="mr-1.5 h-4 w-4" />Links</TabsTrigger>
+            {portfolio && <TabsTrigger value="analytics"><BarChart3 className="mr-1.5 h-4 w-4" />Analytics</TabsTrigger>}
           </TabsList>
 
           {/* About Tab */}
@@ -286,7 +317,7 @@ export default function PortfolioEditor() {
             <Card>
               <CardHeader>
                 <CardTitle>Work Samples & Photos</CardTitle>
-                <CardDescription>Upload images of your products, services, or workspace (max 10, 5MB each)</CardDescription>
+                <CardDescription>Upload images of your products, services, or workspace (max 10, 5MB each). Drag to reorder or use the arrow buttons.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
@@ -307,16 +338,59 @@ export default function PortfolioEditor() {
                     {uploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ImagePlus className="mr-2 h-4 w-4" />}
                     {uploading ? "Uploading..." : "Upload Images"}
                   </Button>
-                  <p className="mt-1 text-xs text-muted-foreground">{images.length}/10 images</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{images.length}/10 images — first image is used as cover</p>
                 </div>
                 {images.length > 0 ? (
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                     {images.map((url, i) => (
-                      <div key={i} className="group relative aspect-square rounded-lg overflow-hidden border bg-muted">
+                      <div
+                        key={url}
+                        draggable
+                        onDragStart={() => handleDragStart(i)}
+                        onDragOver={(e) => handleDragOver(e, i)}
+                        onDrop={handleDrop}
+                        className={`group relative aspect-square rounded-lg overflow-hidden border bg-muted cursor-grab active:cursor-grabbing ${i === 0 ? "ring-2 ring-primary" : ""}`}
+                      >
                         <img src={url} alt={`Portfolio ${i + 1}`} className="h-full w-full object-cover" />
+                        {i === 0 && (
+                          <span className="absolute top-1.5 left-1.5 rounded bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">
+                            COVER
+                          </span>
+                        )}
+                        {/* Drag handle indicator */}
+                        <div className="absolute top-1.5 left-1/2 -translate-x-1/2 rounded bg-background/80 p-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
+                        </div>
+                        {/* Accessible move buttons */}
+                        <div className="absolute bottom-1.5 left-1.5 right-1.5 flex justify-between opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => moveImage(i, i - 1)}
+                            disabled={i === 0}
+                            aria-label={`Move image ${i + 1} left`}
+                          >
+                            <ChevronLeft className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => moveImage(i, i + 1)}
+                            disabled={i === images.length - 1}
+                            aria-label={`Move image ${i + 1} right`}
+                          >
+                            <ChevronRight className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                        {/* Delete button */}
                         <button
                           onClick={() => handleRemoveImage(url)}
-                          className="absolute top-1.5 right-1.5 rounded-full bg-destructive p-1.5 text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="absolute top-1.5 right-1.5 rounded-full bg-destructive p-1.5 text-destructive-foreground opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                          aria-label={`Remove image ${i + 1}`}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
@@ -360,6 +434,78 @@ export default function PortfolioEditor() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Analytics Tab */}
+          {portfolio && (
+            <TabsContent value="analytics">
+              <div className="grid gap-6 sm:grid-cols-3">
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
+                        <Eye className="h-6 w-6 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold">{portfolio.view_count || 0}</p>
+                        <p className="text-sm text-muted-foreground">Total Views</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
+                        <Briefcase className="h-6 w-6 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold">{(portfolio.services || []).length}</p>
+                        <p className="text-sm text-muted-foreground">Services Listed</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
+                        <ImagePlus className="h-6 w-6 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold">{(portfolio.portfolio_images || []).length}</p>
+                        <p className="text-sm text-muted-foreground">Work Samples</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+              <Card className="mt-6">
+                <CardHeader>
+                  <CardTitle>Portfolio Status</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Visibility</span>
+                      <Badge variant={portfolio.is_published ? "default" : "secondary"}>
+                        {portfolio.is_published ? "Published" : "Draft"}
+                      </Badge>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Featured on Homepage</span>
+                      <Badge variant={portfolio.is_featured ? "default" : "outline"}>
+                        {portfolio.is_featured ? "Yes" : "No"}
+                      </Badge>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Portfolio URL</span>
+                      <span className="font-medium">/portfolios/{portfolio.slug}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
         </Tabs>
       </div>
     </DashboardLayout>
