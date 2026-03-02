@@ -249,15 +249,27 @@ export function ProfileForm() {
               <div>
                 <p className="font-medium">{profile?.full_name}</p>
                 <p className="text-sm text-muted-foreground">{profile?.email}</p>
-                <Button
-                  type="button"
-                  variant="link"
-                  className="mt-1 h-auto p-0 text-sm font-medium text-primary"
-                  onClick={() => document.getElementById('avatar-upload')?.click()}
-                  disabled={uploading}
-                >
-                  Change profile photo
-                </Button>
+                {avatarUrl ? (
+                  <Button
+                    type="button"
+                    variant="link"
+                    className="mt-1 h-auto p-0 text-sm font-medium text-primary"
+                    onClick={() => document.getElementById('avatar-upload')?.click()}
+                    disabled={uploading}
+                  >
+                    Change profile photo
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="link"
+                    className="mt-1 h-auto p-0 text-sm font-medium text-primary"
+                    onClick={() => document.getElementById('avatar-upload')?.click()}
+                    disabled={uploading}
+                  >
+                    Upload profile photo
+                  </Button>
+                )}
               </div>
             </div>
           </CardContent>
