@@ -218,20 +218,26 @@ export function ProfileForm() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-6">
-              <div className="relative">
+              <div className="relative inline-flex">
                 <Avatar className="h-24 w-24">
                   <AvatarImage src={avatarUrl || undefined} alt={`${profile?.full_name}'s profile photo`} />
                   <AvatarFallback className="bg-primary text-primary-foreground text-2xl">{initials}</AvatarFallback>
                 </Avatar>
-                <label htmlFor="avatar-upload" className="absolute -bottom-2 -right-2 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg border-2 border-background transition-transform hover:scale-110" aria-label="Upload new profile photo">
-                  {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+                <label
+                  htmlFor="avatar-upload"
+                  className="absolute bottom-0 right-0 z-20 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border-2 border-background bg-primary text-primary-foreground shadow-lg ring-2 ring-primary/20 transition-transform hover:scale-110"
+                  aria-label="Upload new profile photo"
+                >
+                  {uploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Camera className="h-5 w-5" />}
                 </label>
                 <input id="avatar-upload" type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} disabled={uploading} />
               </div>
               <div>
                 <p className="font-medium">{profile?.full_name}</p>
                 <p className="text-sm text-muted-foreground">{profile?.email}</p>
-                <p className="mt-1 text-xs text-muted-foreground">Click the camera icon to upload a new photo</p>
+                <label htmlFor="avatar-upload" className="mt-2 inline-flex cursor-pointer text-sm font-medium text-primary underline-offset-4 hover:underline">
+                  Change profile photo
+                </label>
               </div>
             </div>
           </CardContent>
