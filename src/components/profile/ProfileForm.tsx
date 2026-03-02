@@ -95,6 +95,17 @@ export function ProfileForm() {
   useEffect(() => {
     if (profile) {
       const p = profile as any;
+      const regionName = p.region || "";
+      
+      // Set districts BEFORE form reset so the dropdown options exist
+      if (regionName) {
+        const region = ghanaRegions.find((r) => r.name === regionName);
+        setDistricts(region?.districts || []);
+      } else {
+        setDistricts([]);
+      }
+      setSelectedRegion(regionName);
+
       form.reset({
         full_name: p.full_name || "",
         phone: p.phone || "",
@@ -102,7 +113,7 @@ export function ProfileForm() {
         business_name: p.business_name || "",
         business_type: p.business_type || "",
         disability_type: p.disability_type || "",
-        region: p.region || "",
+        region: regionName,
         city: p.city || "",
         business_address: p.business_address || "",
         mailing_address: p.mailing_address || "",
@@ -118,11 +129,11 @@ export function ProfileForm() {
         bank_name: p.bank_name || "",
         bank_branch: p.bank_branch || "",
       });
-      setSelectedRegion(p.region || "");
       setAvatarUrl(p.avatar_url);
     }
   }, [profile, form]);
 
+  // Update districts when user changes region via the dropdown
   useEffect(() => {
     if (selectedRegion) {
       const region = ghanaRegions.find((r) => r.name === selectedRegion);
@@ -223,21 +234,30 @@ export function ProfileForm() {
                   <AvatarImage src={avatarUrl || undefined} alt={`${profile?.full_name}'s profile photo`} />
                   <AvatarFallback className="bg-primary text-primary-foreground text-2xl">{initials}</AvatarFallback>
                 </Avatar>
-                <label
-                  htmlFor="avatar-upload"
-                  className="absolute bottom-0 right-0 z-20 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border-2 border-background bg-primary text-primary-foreground shadow-lg ring-2 ring-primary/20 transition-transform hover:scale-110"
+                <Button
+                  type="button"
+                  size="icon"
+                  className="absolute bottom-0 right-0 z-20 h-10 w-10 rounded-full border-2 border-background shadow-lg ring-2 ring-primary/20 transition-transform hover:scale-110"
+                  onClick={() => document.getElementById('avatar-upload')?.click()}
+                  disabled={uploading}
                   aria-label="Upload new profile photo"
                 >
                   {uploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Camera className="h-5 w-5" />}
-                </label>
+                </Button>
                 <input id="avatar-upload" type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} disabled={uploading} />
               </div>
               <div>
                 <p className="font-medium">{profile?.full_name}</p>
                 <p className="text-sm text-muted-foreground">{profile?.email}</p>
-                <label htmlFor="avatar-upload" className="mt-2 inline-flex cursor-pointer text-sm font-medium text-primary underline-offset-4 hover:underline">
+                <Button
+                  type="button"
+                  variant="link"
+                  className="mt-1 h-auto p-0 text-sm font-medium text-primary"
+                  onClick={() => document.getElementById('avatar-upload')?.click()}
+                  disabled={uploading}
+                >
                   Change profile photo
-                </label>
+                </Button>
               </div>
             </div>
           </CardContent>
