@@ -63,6 +63,18 @@ export function AccessibilityToolbar() {
     applyPrefs(loadPrefs());
   }, []);
 
+  // Keyboard shortcut: Alt+A to toggle panel
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.altKey && e.key.toLowerCase() === "a") {
+        e.preventDefault();
+        setExpanded((prev) => !prev);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   const update = useCallback((partial: Partial<A11yPrefs>) => {
     setPrefs((prev) => ({ ...prev, ...partial }));
   }, []);
