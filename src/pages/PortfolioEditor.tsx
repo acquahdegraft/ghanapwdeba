@@ -304,7 +304,7 @@ export default function PortfolioEditor() {
                 </div>
                 <div className="space-y-2">
                   <Label>Business Logo</Label>
-                  <p className="text-xs text-muted-foreground">Upload your business logo (max 2MB). This will appear on your public portfolio.</p>
+                  <p className="text-xs text-muted-foreground">Upload your business logo (max 5MB). You can crop it before saving. It will appear on your public portfolio.</p>
                   <div className="flex items-center gap-4">
                     {logoUrl ? (
                       <div className="relative group">
@@ -330,7 +330,7 @@ export default function PortfolioEditor() {
                         ref={logoInputRef}
                         type="file"
                         accept="image/*"
-                        onChange={handleLogoUpload}
+                        onChange={handleLogoFileSelected}
                         className="hidden"
                       />
                       <Button
@@ -346,6 +346,14 @@ export default function PortfolioEditor() {
                     </div>
                   </div>
                 </div>
+
+                <LogoCropDialog
+                  open={showLogoCrop}
+                  imageSrc={logoCropSrc}
+                  onClose={() => { setShowLogoCrop(false); setLogoCropSrc(null); }}
+                  onCropComplete={handleLogoCropComplete}
+                  isSaving={uploadingLogo}
+                />
                 <div className="space-y-2">
                   <Label htmlFor="bio">Bio / About</Label>
                   <Textarea id="bio" value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Tell people about yourself, your experience, and what makes your services unique..." rows={5} />
