@@ -36,6 +36,7 @@ export interface PublicPortfolio {
   social_links: Record<string, string>;
   is_featured: boolean;
   view_count: number;
+  logo_url: string | null;
   full_name: string;
   business_name: string | null;
   business_type: string | null;
