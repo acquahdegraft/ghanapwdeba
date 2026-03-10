@@ -762,6 +762,7 @@ export type Database = {
           headline: string | null
           id: string | null
           is_featured: boolean | null
+          logo_url: string | null
           portfolio_images: string[] | null
           region: string | null
           services: string[] | null
