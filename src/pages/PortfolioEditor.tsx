@@ -39,8 +39,11 @@ export default function PortfolioEditor() {
   const [newSkill, setNewSkill] = useState("");
   const [slug, setSlug] = useState("");
   const [images, setImages] = useState<string[]>([]);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (portfolio) {
