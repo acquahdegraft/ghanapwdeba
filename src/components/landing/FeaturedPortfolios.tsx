@@ -41,12 +41,18 @@ export function FeaturedPortfolios() {
                 )}
                 <CardContent className="p-5">
                   <div className="flex items-start gap-3">
-                    <Avatar className="h-11 w-11">
-                      <AvatarImage src={p.avatar_url || undefined} />
-                      <AvatarFallback className="bg-primary/10 text-primary font-bold text-sm">
-                        {p.full_name?.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
+                    {p.logo_url ? (
+                      <div className="h-11 w-11 rounded-lg border bg-white overflow-hidden flex items-center justify-center shrink-0">
+                        <img src={p.logo_url} alt={`${p.full_name}'s logo`} className="h-full w-full object-contain" />
+                      </div>
+                    ) : (
+                      <Avatar className="h-11 w-11">
+                        <AvatarImage src={p.avatar_url || undefined} />
+                        <AvatarFallback className="bg-primary/10 text-primary font-bold text-sm">
+                          {p.full_name?.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                    )}
                     <div className="flex-1 min-w-0">
                       <h3 className="font-semibold truncate">{p.full_name}</h3>
                       <p className="text-sm text-muted-foreground truncate">{p.headline}</p>
