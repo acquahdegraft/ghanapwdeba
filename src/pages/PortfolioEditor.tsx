@@ -18,6 +18,7 @@ import {
   BarChart3,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { LogoCropDialog } from "@/components/portfolio/LogoCropDialog";
 
 export default function PortfolioEditor() {
   const { data: portfolio, isLoading } = useMyPortfolio();
@@ -42,6 +43,8 @@ export default function PortfolioEditor() {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [logoCropSrc, setLogoCropSrc] = useState<string | null>(null);
+  const [showLogoCrop, setShowLogoCrop] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
@@ -143,23 +146,40 @@ export default function PortfolioEditor() {
     dragOverItem.current = null;
   };
 
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !user) return;
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error("Logo must be under 2MB.");
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image must be under 5MB.");
       return;
     }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setLogoCropSrc(reader.result as string);
+      setShowLogoCrop(true);
+    };
+    reader.readAsDataURL(file);
+    if (logoInputRef.current) logoInputRef.current.value = "";
+  };
+
+  const handleLogoCropComplete = async (croppedBlob: Blob) => {
+    if (!user) return;
     setUploadingLogo(true);
     try {
+      const file = new File([croppedBlob], `logo-${Date.now()}.png`, { type: "image/png" });
       const url = await uploadPortfolioImage(user.id, file);
+      // Delete old logo if replacing
+      if (logoUrl) {
+        await deletePortfolioImage(logoUrl);
+      }
       setLogoUrl(url);
-      toast.success("Logo uploaded!");
+      toast.success("Logo saved!");
+      setShowLogoCrop(false);
+      setLogoCropSrc(null);
     } catch {
       toast.error("Failed to upload logo.");
     } finally {
       setUploadingLogo(false);
-      if (logoInputRef.current) logoInputRef.current.value = "";
     }
   };
 
@@ -284,7 +304,7 @@ export default function PortfolioEditor() {
                 </div>
                 <div className="space-y-2">
                   <Label>Business Logo</Label>
-                  <p className="text-xs text-muted-foreground">Upload your business logo (max 2MB). This will appear on your public portfolio.</p>
+                  <p className="text-xs text-muted-foreground">Upload your business logo (max 5MB). You can crop it before saving. It will appear on your public portfolio.</p>
                   <div className="flex items-center gap-4">
                     {logoUrl ? (
                       <div className="relative group">
@@ -310,7 +330,7 @@ export default function PortfolioEditor() {
                         ref={logoInputRef}
                         type="file"
                         accept="image/*"
-                        onChange={handleLogoUpload}
+                        onChange={handleLogoFileSelected}
                         className="hidden"
                       />
                       <Button
@@ -326,6 +346,14 @@ export default function PortfolioEditor() {
                     </div>
                   </div>
                 </div>
+
+                <LogoCropDialog
+                  open={showLogoCrop}
+                  imageSrc={logoCropSrc}
+                  onClose={() => { setShowLogoCrop(false); setLogoCropSrc(null); }}
+                  onCropComplete={handleLogoCropComplete}
+                  isSaving={uploadingLogo}
+                />
                 <div className="space-y-2">
                   <Label htmlFor="bio">Bio / About</Label>
                   <Textarea id="bio" value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Tell people about yourself, your experience, and what makes your services unique..." rows={5} />
