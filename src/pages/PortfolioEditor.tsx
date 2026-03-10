@@ -57,6 +57,7 @@ export default function PortfolioEditor() {
       setIsPublished(portfolio.is_published);
       setSlug(portfolio.slug || "");
       setImages(portfolio.portfolio_images || []);
+      setLogoUrl(portfolio.logo_url || null);
     } else if (profile) {
       const defaultSlug = (profile.full_name || "member")
         .toLowerCase()
