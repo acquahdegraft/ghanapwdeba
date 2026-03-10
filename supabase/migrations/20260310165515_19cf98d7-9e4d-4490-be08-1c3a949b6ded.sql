@@ -1,0 +1,1 @@
+ALTER TABLE public.portfolios ADD COLUMN logo_url text DEFAULT NULL;

@@ -39,8 +39,11 @@ export default function PortfolioEditor() {
   const [newSkill, setNewSkill] = useState("");
   const [slug, setSlug] = useState("");
   const [images, setImages] = useState<string[]>([]);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (portfolio) {
@@ -54,6 +57,7 @@ export default function PortfolioEditor() {
       setIsPublished(portfolio.is_published);
       setSlug(portfolio.slug || "");
       setImages(portfolio.portfolio_images || []);
+      setLogoUrl(portfolio.logo_url || null);
     } else if (profile) {
       const defaultSlug = (profile.full_name || "member")
         .toLowerCase()
@@ -139,6 +143,33 @@ export default function PortfolioEditor() {
     dragOverItem.current = null;
   };
 
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Logo must be under 2MB.");
+      return;
+    }
+    setUploadingLogo(true);
+    try {
+      const url = await uploadPortfolioImage(user.id, file);
+      setLogoUrl(url);
+      toast.success("Logo uploaded!");
+    } catch {
+      toast.error("Failed to upload logo.");
+    } finally {
+      setUploadingLogo(false);
+      if (logoInputRef.current) logoInputRef.current.value = "";
+    }
+  };
+
+  const handleRemoveLogo = async () => {
+    if (logoUrl) {
+      await deletePortfolioImage(logoUrl);
+      setLogoUrl(null);
+    }
+  };
+
   const handleSave = () => {
     if (!headline.trim()) return;
     const cleanSlug = slug
@@ -157,6 +188,7 @@ export default function PortfolioEditor() {
       social_links: socialLinks,
       is_published: isPublished,
       portfolio_images: images,
+      logo_url: logoUrl || null,
     });
   };
 
@@ -249,6 +281,50 @@ export default function PortfolioEditor() {
                 <div className="space-y-2">
                   <Label htmlFor="headline">Professional Headline *</Label>
                   <Input id="headline" value={headline} onChange={(e) => setHeadline(e.target.value)} placeholder="e.g. Professional Tailor & Fashion Designer" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Business Logo</Label>
+                  <p className="text-xs text-muted-foreground">Upload your business logo (max 2MB). This will appear on your public portfolio.</p>
+                  <div className="flex items-center gap-4">
+                    {logoUrl ? (
+                      <div className="relative group">
+                        <div className="h-20 w-20 rounded-lg border bg-muted overflow-hidden">
+                          <img src={logoUrl} alt="Business logo" className="h-full w-full object-contain" />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleRemoveLogo}
+                          className="absolute -top-2 -right-2 rounded-full bg-destructive p-1 text-destructive-foreground opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                          aria-label="Remove logo"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex h-20 w-20 items-center justify-center rounded-lg border-2 border-dashed bg-muted/50">
+                        <ImagePlus className="h-6 w-6 text-muted-foreground" />
+                      </div>
+                    )}
+                    <div>
+                      <input
+                        ref={logoInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleLogoUpload}
+                        className="hidden"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => logoInputRef.current?.click()}
+                        disabled={uploadingLogo}
+                      >
+                        {uploadingLogo ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ImagePlus className="mr-2 h-4 w-4" />}
+                        {logoUrl ? "Change Logo" : "Upload Logo"}
+                      </Button>
+                    </div>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="bio">Bio / About</Label>

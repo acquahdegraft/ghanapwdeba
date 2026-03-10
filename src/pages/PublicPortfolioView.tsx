@@ -110,12 +110,18 @@ export default function PublicPortfolioView() {
               <Link to="/portfolios"><ArrowLeft className="mr-1.5 h-4 w-4" />All Portfolios</Link>
             </Button>
             <div className="flex flex-col md:flex-row items-start gap-6">
-              <Avatar className="h-24 w-24 border-4 border-primary-foreground/20">
-                <AvatarImage src={portfolio.avatar_url || undefined} />
-                <AvatarFallback className="bg-primary-foreground/20 text-primary-foreground text-2xl font-bold">
-                  {initials}
-                </AvatarFallback>
-              </Avatar>
+              {portfolio.logo_url ? (
+                <div className="h-24 w-24 rounded-xl border-4 border-primary-foreground/20 bg-white overflow-hidden flex items-center justify-center shrink-0">
+                  <img src={portfolio.logo_url} alt={`${portfolio.full_name}'s logo`} className="h-full w-full object-contain" />
+                </div>
+              ) : (
+                <Avatar className="h-24 w-24 border-4 border-primary-foreground/20">
+                  <AvatarImage src={portfolio.avatar_url || undefined} />
+                  <AvatarFallback className="bg-primary-foreground/20 text-primary-foreground text-2xl font-bold">
+                    {initials}
+                  </AvatarFallback>
+                </Avatar>
+              )}
               <div>
                 <h1 className="text-3xl font-bold text-primary-foreground">{portfolio.full_name}</h1>
                 <p className="mt-1 text-lg text-primary-foreground/80">{portfolio.headline}</p>
