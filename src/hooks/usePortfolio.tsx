@@ -18,6 +18,7 @@ export interface Portfolio {
   is_published: boolean;
   is_featured: boolean;
   view_count: number;
+  logo_url: string | null;
   created_at: string;
   updated_at: string;
 }
