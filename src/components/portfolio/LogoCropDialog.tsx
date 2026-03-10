@@ -21,6 +21,12 @@ interface LogoCropDialogProps {
   isSaving?: boolean;
 }
 
+const ASPECT_RATIOS = [
+  { label: "1:1", value: 1 },
+  { label: "4:3", value: 4 / 3 },
+  { label: "16:9", value: 16 / 9 },
+] as const;
+
 function createImage(url: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const image = new Image();
@@ -70,6 +76,7 @@ export function LogoCropDialog({
 }: LogoCropDialogProps) {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
+  const [aspect, setAspect] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
 
   const onCropAreaChange = useCallback((_: Area, croppedPixels: Area) => {
@@ -85,6 +92,7 @@ export function LogoCropDialog({
   const handleClose = () => {
     setCrop({ x: 0, y: 0 });
     setZoom(1);
+    setAspect(1);
     onClose();
   };
 
@@ -94,18 +102,37 @@ export function LogoCropDialog({
         <DialogHeader>
           <DialogTitle>Crop Your Logo</DialogTitle>
           <DialogDescription>
-            Drag to reposition and use the slider to zoom. The cropped area will be used as your logo.
+            Choose an aspect ratio, drag to reposition, and zoom. The cropped area will be your logo.
           </DialogDescription>
         </DialogHeader>
 
         {imageSrc && (
           <div className="space-y-4">
+            {/* Aspect ratio selector */}
+            <div className="flex items-center gap-2">
+              <Label className="text-sm text-muted-foreground shrink-0">Ratio</Label>
+              <div className="flex gap-1.5">
+                {ASPECT_RATIOS.map((r) => (
+                  <Button
+                    key={r.label}
+                    type="button"
+                    size="sm"
+                    variant={aspect === r.value ? "default" : "outline"}
+                    className="h-8 px-3 text-xs"
+                    onClick={() => setAspect(r.value)}
+                  >
+                    {r.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
             <div className="relative h-64 w-full overflow-hidden rounded-lg border bg-muted">
               <Cropper
                 image={imageSrc}
                 crop={crop}
                 zoom={zoom}
-                aspect={1}
+                aspect={aspect}
                 onCropChange={setCrop}
                 onZoomChange={setZoom}
                 onCropComplete={onCropAreaChange}

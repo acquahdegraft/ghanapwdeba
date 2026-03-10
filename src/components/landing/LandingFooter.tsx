@@ -89,7 +89,7 @@ export function LandingFooter() {
             © 2026 GPWDEBA. All rights reserved.
           </p>
           <p className="text-xs text-muted-foreground">
-            Powered & Developed by <span className="font-medium text-foreground">The Creative Computer Solutions</span>
+            Powered & Developed by <span className="font-medium text-foreground">Inclusive App Craft</span>
           </p>
           <div className="flex items-center gap-4">
             {socialLinks.map((social) => (
