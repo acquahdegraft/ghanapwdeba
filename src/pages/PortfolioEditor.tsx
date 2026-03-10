@@ -283,6 +283,50 @@ export default function PortfolioEditor() {
                   <Input id="headline" value={headline} onChange={(e) => setHeadline(e.target.value)} placeholder="e.g. Professional Tailor & Fashion Designer" />
                 </div>
                 <div className="space-y-2">
+                  <Label>Business Logo</Label>
+                  <p className="text-xs text-muted-foreground">Upload your business logo (max 2MB). This will appear on your public portfolio.</p>
+                  <div className="flex items-center gap-4">
+                    {logoUrl ? (
+                      <div className="relative group">
+                        <div className="h-20 w-20 rounded-lg border bg-muted overflow-hidden">
+                          <img src={logoUrl} alt="Business logo" className="h-full w-full object-contain" />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleRemoveLogo}
+                          className="absolute -top-2 -right-2 rounded-full bg-destructive p-1 text-destructive-foreground opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                          aria-label="Remove logo"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex h-20 w-20 items-center justify-center rounded-lg border-2 border-dashed bg-muted/50">
+                        <ImagePlus className="h-6 w-6 text-muted-foreground" />
+                      </div>
+                    )}
+                    <div>
+                      <input
+                        ref={logoInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleLogoUpload}
+                        className="hidden"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => logoInputRef.current?.click()}
+                        disabled={uploadingLogo}
+                      >
+                        {uploadingLogo ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ImagePlus className="mr-2 h-4 w-4" />}
+                        {logoUrl ? "Change Logo" : "Upload Logo"}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="bio">Bio / About</Label>
                   <Textarea id="bio" value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Tell people about yourself, your experience, and what makes your services unique..." rows={5} />
                 </div>
