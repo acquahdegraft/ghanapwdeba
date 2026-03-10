@@ -143,6 +143,33 @@ export default function PortfolioEditor() {
     dragOverItem.current = null;
   };
 
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Logo must be under 2MB.");
+      return;
+    }
+    setUploadingLogo(true);
+    try {
+      const url = await uploadPortfolioImage(user.id, file);
+      setLogoUrl(url);
+      toast.success("Logo uploaded!");
+    } catch {
+      toast.error("Failed to upload logo.");
+    } finally {
+      setUploadingLogo(false);
+      if (logoInputRef.current) logoInputRef.current.value = "";
+    }
+  };
+
+  const handleRemoveLogo = async () => {
+    if (logoUrl) {
+      await deletePortfolioImage(logoUrl);
+      setLogoUrl(null);
+    }
+  };
+
   const handleSave = () => {
     if (!headline.trim()) return;
     const cleanSlug = slug
@@ -161,6 +188,7 @@ export default function PortfolioEditor() {
       social_links: socialLinks,
       is_published: isPublished,
       portfolio_images: images,
+      logo_url: logoUrl || null,
     });
   };
 
