@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import {
   Loader2, Plus, X, Eye, Globe, Lock, Briefcase, Wrench, User,
   Link as LinkIcon, ImagePlus, Trash2, GripVertical, ChevronLeft, ChevronRight,
-  BarChart3, Crop,
+  BarChart3,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { LogoCropDialog } from "@/components/portfolio/LogoCropDialog";
