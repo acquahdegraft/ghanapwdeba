@@ -297,6 +297,7 @@ export type Database = {
           id: string
           is_featured: boolean
           is_published: boolean
+          logo_url: string | null
           portfolio_images: string[] | null
           services: string[] | null
           skills: string[] | null
@@ -315,6 +316,7 @@ export type Database = {
           id?: string
           is_featured?: boolean
           is_published?: boolean
+          logo_url?: string | null
           portfolio_images?: string[] | null
           services?: string[] | null
           skills?: string[] | null
@@ -333,6 +335,7 @@ export type Database = {
           id?: string
           is_featured?: boolean
           is_published?: boolean
+          logo_url?: string | null
           portfolio_images?: string[] | null
           services?: string[] | null
           skills?: string[] | null
