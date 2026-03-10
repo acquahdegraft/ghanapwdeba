@@ -43,6 +43,8 @@ export default function PortfolioEditor() {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [logoCropSrc, setLogoCropSrc] = useState<string | null>(null);
+  const [showLogoCrop, setShowLogoCrop] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
