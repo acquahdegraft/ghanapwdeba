@@ -159,14 +159,13 @@ export default function PublicPortfolioView() {
                 <Card>
                   <CardHeader><CardTitle>Services Offered</CardTitle></CardHeader>
                   <CardContent>
-                    <div className="grid gap-3 sm:grid-cols-2">
+                    <ul className="list-disc list-inside space-y-2 text-muted-foreground">
                       {portfolio.services.map((s, i) => (
-                        <div key={i} className="flex items-center gap-2 rounded-lg border p-3">
-                          <Briefcase className="h-4 w-4 text-primary shrink-0" />
-                          <span className="text-sm font-medium">{s}</span>
-                        </div>
+                        <li key={i} className="text-sm">
+                          <span className="font-medium text-foreground">{s}</span>
+                        </li>
                       ))}
-                    </div>
+                    </ul>
                   </CardContent>
                 </Card>
               )}
