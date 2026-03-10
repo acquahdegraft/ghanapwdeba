@@ -146,23 +146,40 @@ export default function PortfolioEditor() {
     dragOverItem.current = null;
   };
 
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !user) return;
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error("Logo must be under 2MB.");
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image must be under 5MB.");
       return;
     }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setLogoCropSrc(reader.result as string);
+      setShowLogoCrop(true);
+    };
+    reader.readAsDataURL(file);
+    if (logoInputRef.current) logoInputRef.current.value = "";
+  };
+
+  const handleLogoCropComplete = async (croppedBlob: Blob) => {
+    if (!user) return;
     setUploadingLogo(true);
     try {
+      const file = new File([croppedBlob], `logo-${Date.now()}.png`, { type: "image/png" });
       const url = await uploadPortfolioImage(user.id, file);
+      // Delete old logo if replacing
+      if (logoUrl) {
+        await deletePortfolioImage(logoUrl);
+      }
       setLogoUrl(url);
-      toast.success("Logo uploaded!");
+      toast.success("Logo saved!");
+      setShowLogoCrop(false);
+      setLogoCropSrc(null);
     } catch {
       toast.error("Failed to upload logo.");
     } finally {
       setUploadingLogo(false);
-      if (logoInputRef.current) logoInputRef.current.value = "";
     }
   };
 
