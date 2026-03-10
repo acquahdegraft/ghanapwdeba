@@ -15,9 +15,10 @@ import { toast } from "sonner";
 import {
   Loader2, Plus, X, Eye, Globe, Lock, Briefcase, Wrench, User,
   Link as LinkIcon, ImagePlus, Trash2, GripVertical, ChevronLeft, ChevronRight,
-  BarChart3,
+  BarChart3, Crop,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { LogoCropDialog } from "@/components/portfolio/LogoCropDialog";
 
 export default function PortfolioEditor() {
   const { data: portfolio, isLoading } = useMyPortfolio();
